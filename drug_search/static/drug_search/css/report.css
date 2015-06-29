@@ -1,0 +1,53 @@
+/*This targets the table scroll class*/
+.table_scroll
+{
+    height:100px;
+    overflow:scroll;
+}
+/*This targets the content table id*/
+#content_table
+{
+    height:200px;
+}
+/*This targets the link row id*/
+#linkrow:hover th:nth-child(1)
+{
+     color:blue;
+}
+/*.table-striped>tbody>tr:nth-child(odd)>td, 
+.table-striped>tbody>tr:nth-child(odd)>th {
+   background-color: #75FFFF;
+ }*/
+.approved
+ {
+    background-color:rgb(111,232,144);
+ }
+.investigational
+ {
+    background-color:rgb(187,237,47);
+ }
+ .withdrawn
+ {
+    background-color:rgb(240,170,50);
+ }
+ .experimental
+ {
+    background-color:rgb(151,198,247);
+ }
+ .nutraceutical
+ {
+    background-color:rgb(245,115,243);
+ }
+ .illicit
+ {
+    background-color:rgb(255,5,47);
+ }
+ .drug_list
+ {
+    height:200px;
+ }
+.modal
+{
+    position: absolute;
+    top: 50%;
+}

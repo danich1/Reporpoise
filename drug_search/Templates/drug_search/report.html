@@ -1,0 +1,157 @@
+{% extends "drug_search/drug_base.html" %}
+{% load staticfiles %}
+{% block headlink %} 
+<link href="{% static 'drug_search/css/carousel.css' %}" rel="stylesheet" media="screen">
+<link href="{% static 'drug_search/css/report.css' %}" rel="stylesheet" media="screen">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js" charset="utf-8"></script>
+<script src="{% static 'drug_search/js/d3-cloud-1.0.5/d3.layout.cloud.js'%}"></script>
+<script src="{% static 'drug_search/js/report.js' %}"></script>
+<title>Gene Search</title>
+{% endblock %}
+{% block content %}
+<body onload="init();">
+    {% endblock%}
+    {%block body_content %}
+    <div ng-app="drug_search" ng-controller="drug_search_control">
+        <div class="modal fade" drug-modal="!finished">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <div class="progress">
+                        <div id="bar" class="progress-bar progress-bar-info progress-bar-striped active" role="progressbar"style="width:50%">
+                            Downloading the Data....
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="container" ng-show="finished">
+            <div class="row">
+                <div class="col-sm-9 col-md-7">
+                    <h1> Gene Wagon </h1>
+                    <div class="container" id="header">
+                        <div id="carousel_box">
+                            <section class="carousel_container">
+                                <div id="carousel">
+                                    <figure ng-repeat="gene in data_keys" ng-click="change_table(gene)">
+                                        <p>{%verbatim%}{{gene}}{%endverbatim%}</p>
+                                        <p>{%verbatim%}{{drug_data[gene].length}}{%endverbatim%}</p>
+                                    </figure>
+                                </div>
+                            </section>
+                            <button id="left_button" data-increment="-1" type="button" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-chevron-left"></span></button>
+                            <button id="right_button" data-increment="1" type="button" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-chevron-right"></span></button>
+                        </div>
+                    </div>
+                    <form id="networkform" action="network" method="post" ng-show="gene_picked()">
+                        {% csrf_token %}
+                        <input id="gene_network_name" name="gene_name" type="hidden" value="" />
+                        {%verbatim%}<input id="gene_phenotypes" name="phenotypes" type="hidden" value="{{phenotype_list}}"/>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-info dropdown-toggle" role="group" data-toggle="dropdown">
+                                Networktize It! <span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a href="#" ng-click="form_submit('mini')">Mini Network</a></li>
+                                <li><a href="#" ng-click="form_submit('full')">Full Network</a></li>
+                            </ul>
+                        </div>
+                        {%endverbatim%}
+                    </form>
+                </div>
+                <div class="col-sm-3 col-md-5">
+                    <h1> Common Words </h1>
+                    <div id="word_cloud">
+                        Please click on a gene!!
+                    </div>
+                </div>
+            </div>
+            {%verbatim%}
+            <div class="row">
+                <div id="table_of_contents" ng-repeat="key in data_keys" ng-show="show_table('{{key}}')">
+                    <div id="category_table" class="col-sm-6 col-md-6">
+                        <div class="page-header">
+                            <h1> Table of Contents </h1>
+                        </div>
+                        <table id="category_table" class="table">
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                </tr>
+                            </thead>
+                            <tr ng-repeat="category in drug_group[key]" ng-click="change_content_table(key+category.name)" class="{{category.name}}" id="linkrow">
+                                <th>{{category.name}}</th>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-sm-6 col-md-6">
+                        <div id="drug_category_table" ng-repeat="category in drug_group[key]" ng-show="show_content_table('{{key}}'+'{{category.name}}')">
+                            <div class="page-header">
+                                <h1> Drugs </h1>
+                            </div>
+                            <!-- add drug action towards this table -->
+                            <div class="table_scroll drug_list">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th> Drug </th>
+                                            <th> Action </th>
+                                        </tr>
+                                    </thead>
+                                    <tr class="{{get_category_class()}}" ng-click="show(drug_name)" ng-repeat="drug_name in category[category.name]" id="linkrow">
+                                        <th> {{drug_name}} </th>
+                                        <th>{{find_drug(drug_name)[drug_name]['Targets'][gene]['categories'].join()}}</th>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <section class="ng-hide" ng-hide="hide">
+                <figure id="{{drug_key}}" ng-repeat="(drug_key,drug_value) in drug">
+                    <div class="page-header">
+                        <h1>{{drug_key}}</h1>
+                    </div>
+                    <table id="table_form" class="table table-striped">
+                        <tr ng-repeat="drug_id in drug[drug_key].DrugID">
+                            <th ng-if="$index==0"> Drugbank ID</th>
+                            <th ng-if="$index>0"> Alternative ID </th>
+                            <th><a href="http://www.drugbank.ca/drugs/{{drug_id}}" target="_blank">{{drug_id}}</a></th>
+                        </tr>
+                        <tr>
+                            <th>Drug Group</th>
+                            <th>{{drug[drug_key].group.join()}}</th>
+                        </tr>
+                        <tr>
+                            <th style="width:30%">Targets({{drug[drug_key].Targets|object_len}})</th>
+                            <th style="width:70%">
+                                <div class="table_scroll">
+                                    <table class="table table-striped table-hover table-condensed">
+                                        <thead>
+                                            <tr>
+                                                <th> Gene </th>
+                                                <th> Action </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr ng-repeat="(target_key,target_value) in drug[drug_key].Targets" ng-click="open_gene(target_value)" target="_blank" id="linkrow">
+                                                <th>{{target_key}}</th>
+                                                <th>{{target_value.categories.join()}}</th>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </th>
+                        </tr>
+                    </table>
+                </figure>
+            </section>
+            {% endverbatim %}
+            <script>
+            load('{{genes}}');
+            </script>
+            <style ng-repeat="gene in data_keys"> 
+            #carousel figure:nth-child({% verbatim %}{{$index+1}}{% endverbatim %}){background-color: hsla({% verbatim %}{{360/drug_data[gene].length}}{% endverbatim %}, 100%, 47%, 0.63);transform: rotateY({% verbatim %}{{360/data_keys.length*$index}}{% endverbatim %}deg)translateZ({{translate}}px);}
+            </style>
+        </div>
+        {% endblock %}

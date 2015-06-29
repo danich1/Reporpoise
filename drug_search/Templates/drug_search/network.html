@@ -1,0 +1,93 @@
+{% extends "drug_search/drug_base.html" %}
+{% load staticfiles %}
+{% block headlink %} 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js" charset="utf-8"></script>
+<script src="{% static 'drug_search/js/network.js' %}"></script>
+<link href="{% static 'drug_search/css/network.css' %}" rel="stylesheet" media="screen">
+<title>Gene Network</title>
+{% endblock %}
+{% block body_content %}
+{%verbatim%}
+<div ng-app="drug_search" ng-controller="drug_search_control">
+    <div id="progress_bar" class="modal fade" drug-modal="!finished">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <div class="progress">
+                        <div id="bar" class="progress-bar progress-bar-info progress-bar-striped active" role="progressbar"style="width:33%">
+                            Downloading the Data....
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <div id="base_model" ng-show="finished">
+     <div id="pheno_selector">
+        <select>
+            <option ng-click="update_graph('default')">Select A Phenotype Here</option>
+            <option ng-click="update_graph(pheno)" ng-repeat="pheno in phenotype_categories">{{pheno}}</option>
+        </select>
+    </div>
+    <div id="gene_network">
+    </div>
+    <div class="modal fade" role="dialog" drug-modal="switch_case">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" ng-click="switch_case = false">&times;</button>
+                    <h4 class="modal-title"><a href="#" ng-click="loadgene(gene_name)"> {{gene_name}} </a></h4>
+                </div>
+                <div class="modal-body">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-sm-5 col-md-5"> 
+                                <div class="table_scroll">
+                                    <table class="table table-stripped">
+                                        <thead>
+                                            <tr>
+                                                <th> Drug </th>
+                                                <th> Action </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr id="linkrow" ng-repeat="drug in drug_list" ng-click="">
+                                                <th><a href="http://www.drugbank.ca/drugs/{{drug[get_key(drug)].DrugID[0]}}" target="_blank">{{get_key(drug)}}</a></th>
+                                                <th>{{find_drug(drug[get_key(drug)]['Targets'],gene_name)['categories'].join()}}</th>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="col-sm-7 col-md-7">
+                                <div class="table_scroll table_condensed">
+                                    <table class="table table-stripped">
+                                        <thead>
+                                            <tr>
+                                                <th> Phenotype </th>
+                                                <th> Z-Score </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                           <tr ng-repeat="pheno in phenotype_list[gene_name]">
+                                                <th>{{pheno[0]}}</th>
+                                                <th>{{pheno[1]}}</th>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" ng-click="switch_case = false">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+{%endverbatim%}
+<script>
+load_graph('{{gene_network}}','{{phenotypes}}','{{mode}}');
+</script>
+{% endblock %}

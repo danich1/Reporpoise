@@ -1,0 +1,63 @@
+/*This targets the carousel container class in report.html*/
+.carousel_container
+{
+    width: 210px;
+    height: 140px;
+    margin-right:auto;
+    margin-left:auto;
+    margin-top:10px;
+    perspective:1000px;
+}
+/*This targets the carousel id in report.html*/
+#carousel
+{
+    width:100%;
+    height:100%;
+    position:absolute;
+    transform: translateZ(-105px);
+    transform-style:preserve-3d;
+    transition: transform 1s;
+}
+/*This targets the carousel's figure tags in report.html*/
+#carousel figure {
+    display: block;
+    position: absolute;
+    width: 150px;
+    height: 116px;
+    left: 20px;
+    top: 20px;
+    border: 2px solid black;
+    /*font-size: 40px;
+    font-weight: bold;*/
+    color: white;
+    font-size:30px;
+    text-align: center;
+
+}
+/*This targets the right button id in report.html*/
+#right_button
+{
+    position:absolute;
+    right:10px;
+    bottom:10px;
+}
+/*This targets the left button id in report.html*/
+#left_button
+{
+    position:absolute;
+    left:10px;
+    bottom:10px;
+}
+/*This targets the header id in report.html*/
+#header
+{
+    display:inline;
+}
+/*This targets the carousel_box id in report.html*/
+#carousel_box
+{
+    position:relative;
+    width:600px;
+    height:210px;
+    float:left;
+}

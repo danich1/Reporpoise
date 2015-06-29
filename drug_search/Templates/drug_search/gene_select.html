@@ -1,0 +1,25 @@
+{% extends "drug_search/drug_base.html" %}
+{% load staticfiles %}
+{%block headlink %}
+    <link href="{% static 'drug_search/css/form.css' %}" rel="stylesheet" media="screen">
+    <script src="{% static 'drug_search/js/form.js' %}"></script>
+    <title>Repurpose</title>
+{% endblock %}
+{% block body_content %}
+    <div class="container">
+        <div class="jumbotron">
+            <h1> Gene Search </h1>
+            <p> This is where you enter a list of gene names.</p>
+            <p> The acceptable formats are <a href="https://en.wikipedia.org/wiki/Comma-separated_values">Comma Seperated Values</a> (CSV) or <a href="https://en.wikipedia.org/wiki/Tab-separated_values">Tab Seperated Values</a> (TSV).</p>
+            <p> Column Headers are: Gene Name,Phenotypic Label,Z-Score,Label2,Z-Score2 etc.</p>
+        </div>
+    </div>
+    <div class="form-group">
+        <form action="search" method="post" id="genes" enctype="multipart/form-data">
+            {% csrf_token %}
+            <textarea style="resize:none" form="genes" col="20" row="30" name="gene_name" class="form-control" onblur="onBlur(this)" onFocus="onFocus(this)" id="gene_text"> Enter Gene List Here or Insert a File Below...</textarea>
+            <input type="file" name="file_upload" id="fileToUpload"/>
+            <input type="submit" value="Search" name="Search" class="btn btn-info"/>
+        </form>
+    </div>
+{% endblock %}

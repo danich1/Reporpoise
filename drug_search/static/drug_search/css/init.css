@@ -1,0 +1,22 @@
+/*This targets the title id in all the html files*/
+#title
+{
+    color:red;
+    font-style: oblique;
+    font-family: "Times New Roman", Times, serif;
+    font-size:30px;
+    text-shadow:
+    -1px -1px 0 white,
+    1px -1px 0 white,
+    -1px 1px 0 white,
+    1px 1px 0 white;
+}
+/*This targets the navbar class in all the html files*/
+.navbar-default
+{
+ background-color: #0D024A;
+ /*border-top:none;
+ border-left:none;
+ border-right:none;
+ box-shadow:none;*/
+}
