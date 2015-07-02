@@ -1,3 +1,4 @@
-
+*~
+*.json
 *.sqlite3
 drug_search/data/
