@@ -3,6 +3,7 @@
 {% block headlink %} 
 <link href="{% static 'drug_search/css/carousel.css' %}" rel="stylesheet" media="screen">
 <link href="{% static 'drug_search/css/report.css' %}" rel="stylesheet" media="screen">
+<link href="{% static 'drug_search/css/network.css' %}" rel="stylesheet" media="screen">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js" charset="utf-8"></script>
 <script src="{% static 'drug_search/js/d3-cloud-1.0.5/d3.layout.cloud.js'%}"></script>
 <script src="{% static 'drug_search/js/report.js' %}"></script>
@@ -26,13 +27,13 @@
         </div>
         <div class="container" ng-show="finished">
             <div class="row">
-                <div class="col-sm-9 col-md-7">
+                <div class="col-sm-12 col-md-12">
                     <h1> Gene Wagon </h1>
                     <div class="container" id="header">
                         <div id="carousel_box">
                             <section class="carousel_container">
                                 <div id="carousel">
-                                    <figure ng-repeat="gene in data_keys" ng-click="change_table(gene)">
+                                    <figure ng-repeat="gene in data_keys" ng-class="gene_color_class[gene]"  ng-click="change_table(gene)">
                                         <p>{%verbatim%}{{gene}}{%endverbatim%}</p>
                                         <p>{%verbatim%}{{drug_data[gene].length}}{%endverbatim%}</p>
                                     </figure>
@@ -46,25 +47,26 @@
                         {% csrf_token %}
                         <input id="gene_network_name" name="gene_name" type="hidden" value="" />
                         {%verbatim%}<input id="gene_phenotypes" name="phenotypes" type="hidden" value="{{phenotype_list}}"/>
-                        <div class="btn-group">
-                            <button type="button" class="btn btn-info dropdown-toggle" role="group" data-toggle="dropdown">
-                                Networktize It! <span class="caret"></span>
-                            </button>
-                            <ul class="dropdown-menu">
-                                <li><a href="#" ng-click="form_submit('mini')">Mini Network</a></li>
-                                <li><a href="#" ng-click="form_submit('full')">Full Network</a></li>
-                            </ul>
-                        </div>
+                        <button type="button" class="btn btn-info dropdown-toggle" role="group" ng-click="form_submit('full')">
+                            View Full Network!
+                        </button>
                         {%endverbatim%}
                     </form>
                 </div>
-                <div class="col-sm-3 col-md-5">
+            </div>
+            <div class="row">
+             <div class="col-sm-6 col-md-6 col-lg-6">
                     <h1> Common Words </h1>
                     <div id="word_cloud">
                         Please click on a gene!!
                     </div>
                 </div>
+            <div class="col-sm-6 col-md-6 col-lg-6">
+                <h1> Gene Network </h1>
+            <div id="gene_network">
             </div>
+        </div>
+        </div>
             {%verbatim%}
             <div class="row">
                 <div id="table_of_contents" ng-repeat="key in data_keys" ng-show="show_table('{{key}}')">
@@ -83,7 +85,7 @@
                             </tr>
                         </table>
                     </div>
-                    <div class="col-sm-6 col-md-6">
+                    <div id="drug_table_of_contents"class="col-sm-6 col-md-6">
                         <div id="drug_category_table" ng-repeat="category in drug_group[key]" ng-show="show_content_table('{{key}}'+'{{category.name}}')">
                             <div class="page-header">
                                 <h1> Drugs </h1>
@@ -151,7 +153,7 @@
             load('{{genes}}');
             </script>
             <style ng-repeat="gene in data_keys"> 
-            #carousel figure:nth-child({% verbatim %}{{$index+1}}{% endverbatim %}){background-color: hsla({% verbatim %}{{360/drug_data[gene].length}}{% endverbatim %}, 100%, 47%, 0.63);transform: rotateY({% verbatim %}{{360/data_keys.length*$index}}{% endverbatim %}deg)translateZ({{translate}}px);}
+            #carousel figure:nth-child({% verbatim %}{{$index+1}}{% endverbatim %}){transform: rotateY({% verbatim %}{{360/data_keys.length*$index}}{% endverbatim %}deg)translateZ({{translate}}px);}
             </style>
         </div>
         {% endblock %}

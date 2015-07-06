@@ -5,6 +5,8 @@ returns: calls the draw_graph function to use d3 to graph the gene network
 */
 function load_graph(data,phenotypes,mode)
 {
+    // fix the data for a json object
+    data = data.replace(/&quot;/g,'\'');
     phenotypes = decodeHTML(phenotypes);
     var app = angular.module('drug_search', []);
     //enable angular to use html5 urls
@@ -30,6 +32,7 @@ function load_graph(data,phenotypes,mode)
                 }
             }
         };
+        // make sure to change when necessary
         $scope.update_graph = function(category)
         {
             var found_category = false;
@@ -104,13 +107,13 @@ function load_graph(data,phenotypes,mode)
             var height = 600;
             var offset = 12.5;
             var offset_space = 25;
-
+            var link_offset = 500;
             //create a force graph layout https://github.com/mbostock/d3/wiki/Force-Layout
             var force = d3.layout.force()
             .nodes(d3.values(data["nodes"]))
             .links(data["links"])
             .size([width,height])
-            .linkDistance(100)
+            .linkDistance(link_offset)
             .charge(-170)
             .start();
 
@@ -136,14 +139,11 @@ function load_graph(data,phenotypes,mode)
             .on("dblclick", function(d,i)
             {
                 console.log($scope.switch_case);
-                if (d.type == "gene")
-                {
-                    //console.log(d);
-                    $scope.switch_case = true;
-                    $scope.drug_list = $scope.drug_data[d.name];
-                    $scope.gene_name = d.name;
-                    $scope.$apply();
-                }
+                //console.log(d);
+                $scope.switch_case = true;
+                $scope.drug_list = $scope.drug_data[d.name];
+                $scope.gene_name = d.name;
+                $scope.$apply();
             })
             .call(force.drag);
             //append a title to each node
@@ -195,7 +195,7 @@ function load_graph(data,phenotypes,mode)
         .attr("r", 7.5)
         .attr("cx", 12.5)
         .attr("cy",function(d,i){return (offset*3)+((i+1)*offset_space)})
-        .attr("class", function(d){return d.data});
+        .attr("class", function(d){return d.type});
 
         var legend_text = legend.selectAll('text')
         .data(d3.merge([data.legend.line,data.legend.circle]))
@@ -209,7 +209,7 @@ function load_graph(data,phenotypes,mode)
             params:
             {
                 "mode":mode,
-                "gene":data,
+                "genes":data,
                 "acceptable_genes":$scope.phenotype_list
             }
         })
@@ -217,7 +217,6 @@ function load_graph(data,phenotypes,mode)
         .success(
             function(response) 
             {
-                //console.log(response);
                 $scope.graph = response;
                 $http.get("grab_data",{
                     params:
@@ -228,6 +227,7 @@ function load_graph(data,phenotypes,mode)
                 })
                 .success(function(response)
                 {
+                    //console.log(response);
                     //merge the pheno type data
                     $scope.phenotype_list=merge($scope.phenotype_list, response["phenotypes"]["pheno_data"]);
                     //$scope.phenotype_categories= response["phenotypes"]["pheno_list"];

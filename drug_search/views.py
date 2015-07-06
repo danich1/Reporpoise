@@ -1,5 +1,5 @@
 from django.shortcuts import render
-
+from django.db.models import Q
 from django.http import HttpResponse,Http404
 from collections import defaultdict
 from .models import *
@@ -19,7 +19,7 @@ def network(request):
         gene_name = request.POST.get("gene_name","")
         phenotypes = request.POST.get("phenotypes","")
         mode = request.POST.get("mode","")
-    return render(request,'drug_search/network.html',{"gene_network":gene_name,"phenotypes":phenotypes,"mode":mode})
+    return render(request,'drug_search/network.html',{"gene_network":json.dumps({gene_name:""}),"phenotypes":phenotypes,"mode":mode})
 
 # This method will parse the file or a gene list in order to render the gene wagon page correctly
 def search(request):
@@ -36,6 +36,7 @@ def search(request):
             if gene_name != '':
                 gene_dict.update({gene_name:[]})
                 if len(gene_obj) > 0:
+                    # if the user forgets to input a z-score for a trait. 
                     if len(gene_obj) % 2 == 1:
                         raise Http404("The input is in valid!! Please check the input and try again!!")
                     for index in range(len(gene_obj)-1):
@@ -71,7 +72,7 @@ def grab_data(request):
         for key in drug_list:
             #created the categories and drug dictionaries where the key is the gene name ex {"MAPK1":{}}
             categories.update({key:[]})
-            drugs.update({key:[]})
+            drugs.update({key:[]})    
             #for each drug in the list of drugs based on gene key
             for drug in drug_list[key]:
                 #for each drug group grab the drug group name ex {"approved":{"approved":["UREA"etc..],"name":"approved"}}
@@ -88,8 +89,15 @@ def grab_data(request):
                 #Create the drug object and place it into drugs dictionary {"ATM":{"Caffeine":{"group":["approved"],"DrugID":["DB00201"."APRD00673"],"Targets":[{"F2":{"categories":["inducer"],"uniprot":"P00734"}}]}}}
                 drugs[key].append({drug.name:{"group":[group.name for group in drug.group.all()],"DrugID":[drugID.drug_id for drugID in drug.drugid_set.all()],"Targets":target}})
                 target={}
+            #a dictionary to manually order the group options
+            drug_group_order_map = {"approved":0, "investigational":1, "experimental":2,"nutraceutical":3,"withdrawn":4,"illicit":5}
+            #I am sorting the categories here
+            drug_group_keys = sorted(drug_group_dict.keys(), key=lambda x: drug_group_order_map[x])
             #finalize the categories object using gene name as a key ex {"ATM": {"approved":{"approved":["UREA"etc..],"name":"approved"}}}
-            categories[key] = [drug_group_dict[drug_group_element] for drug_group_element in drug_group_dict]
+            if len(drug_list[key]) == 0:
+                categories[key] = [{"unknown":[], "name":"unknown"}]
+            else:
+                categories[key] = [drug_group_dict[drug_group_element] for drug_group_element in drug_group_keys]
             #empty out drug group
             drug_group_dict = {}
         #return json object containing the data
@@ -98,60 +106,75 @@ def grab_data(request):
 
 #This method returns gene network json data based on a given gene list
 #work on getting the links to only show drugs that have more then one gene target
+#mini network is genes within the query list only
+#full network is all the iteractions a given gene has
 def networktize(request):
     if request.method == 'GET':
-        index = 1
+        index = 0
         #get parameters
-        gene_name = request.GET['gene']
         mode = request.GET['mode']
-        acceptable_genes = dict(ast.literal_eval(request.GET['acceptable_genes']))
+        #acceptable_genes = dict(ast.literal_eval(request.GET['acceptable_genes']))
+        gene_list = dict(ast.literal_eval(request.GET['genes'])).keys()
         #this is the json data that gets passed into the d3 network ex {"Nodes":[{}],"links":[{}]}
-        network_graph ={"nodes":[{"name":gene_name,"type":"gene","url":"drug_search/search"}],"links":[]}
+        network_graph = {"nodes":[],"links":[]}
         #keep track of which genes interact with eachother and the drug interactions
-        interaction_indicies = {gene_name:0}
-        double_interaction = {}
-        #load preprocessed data from python pickle (change to do real loading later)
-        interactions = pickle.load(open('drug_search/data/interact.p','rb'))
-        #Sift through the preprocessed data to graph all the gene-gene interactions that match given genes
-        gene_interaction = filter(lambda x: x[0] == gene_name or x[1] == gene_name,interactions)
-        if mode=='mini':
-            gene_interaction = filter(lambda x: x[0] in acceptable_genes.keys() and x[1] in acceptable_genes.keys(), gene_interaction)
-            other_genes = [interact[0] if interact[0] != gene_name else interact[1] for interact in gene_interaction if interact[0]]
-        else:
-            #grab the genes that don't match the query gene
-            other_genes = [interact[0] if interact[0] != gene_name else interact[1] for interact in gene_interaction]
-        #include the initial gene in the associated drug object
-        other_genes.append(gene_name)
-        #grab all the associated drugs that target a given gene
-        associated_drugs = {gene: Drug.objects.filter(targets__gene__gene_name__iexact=gene) for gene in other_genes if len(Drug.objects.filter(targets__gene__gene_name__iexact=gene)) > 0}
-        #for each associated drug
-        for network_gene_name in associated_drugs:
-            #if new gene add it into the interaction dictionary
-            if network_gene_name not in interaction_indicies:
-                network_graph["nodes"].append({"name":network_gene_name,"type":"gene","url":"drug_search/search"})
-                interaction_indicies[network_gene_name] = index
-                index = index + 1
-            #append an interaction of a given gene with the target gene
-            network_graph["links"].append({"source":interaction_indicies[network_gene_name],"target":interaction_indicies[gene_name],"type":"double"})
-            #for each associated drug append a link from it to a gene (modify to only include drugs that target two genes)
-            for drug in associated_drugs[network_gene_name]:
-                if drug.name in double_interaction:
-                    if drug.name not in interaction_indicies:
-                        network_graph["nodes"].append({"name":drug.name,"type":"drug","url":drug.drugid_set.all()[0].drug_id})
-                        interaction_indicies[drug.name] = index
-                        index = index + 1
-                    #only include drugs that target more than one gene
-                    for interaction_gene_name in double_interaction[drug.name]:
-                        network_graph["links"].append({"source":interaction_indicies[drug.name],"target":interaction_indicies[interaction_gene_name],"type":"single"})
-                    double_interaction[drug.name]=[]
-                    #append link
-                    network_graph["links"].append({"source":interaction_indicies[drug.name],"target":interaction_indicies[network_gene_name],"type":"single"})
+        mini_interaction_indicies = {}
+        #keep track of each gene index for each link
+        full_interaction_indicies = {}
+        total_genes = {}
+        for gene_name in gene_list:
+            interactions = Interactions.objects.filter(Q(gene_source=gene_name)|Q(gene_target=gene_name))
+            for interaction in interactions:
+                case = "Double" if len(interaction.source.all()) > 1 else "Single"
+                if mode=="mini":
+                    #only include iteractions that are in the query list
+                    # if both genes are in the gene query
+                    if interaction.gene_source.gene_name in gene_list and interaction.gene_target.gene_name in gene_list:
+                        #since both genes are in the gene query add it to the mini network
+                        if interaction.gene_source.gene_name not in mini_interaction_indicies:
+                            mini_interaction_indicies.update({interaction.gene_source.gene_name:index})
+                            network_graph["nodes"].append({"name":interaction.gene_source.gene_name,"url":"drug_search/search","type": interaction.gene_source.category.all()[0].category if len(interaction.gene_source.category.all())>0 else "Regular"})
+                            index = index + 1
+                        if interaction.gene_target.gene_name not in mini_interaction_indicies:
+                            mini_interaction_indicies.update({interaction.gene_target.gene_name:index})
+                            network_graph["nodes"].append({"name":interaction.gene_target.gene_name,"url":"drug_search/search","type": interaction.gene_target.category.all()[0].category if len(interaction.gene_target.category.all())>0 else "Regular"})
+                            index = index + 1
+                        #don't want the gene to target itself
+                        if interaction.gene_source.gene_name != interaction.gene_target.gene_name:
+                            network_graph["links"].append({"source":mini_interaction_indicies[interaction.gene_source.gene_name],"target":mini_interaction_indicies[interaction.gene_target.gene_name],"type":case})
                 else:
-                    double_interaction.update({drug.name:[]})
-                    double_interaction[drug.name].append(network_gene_name)
-        #append a legend as well
-        network_graph.update({"legend":{"line":[{"data":"gene-gene","type":"double"},{"data":"drug-gene","type":"single"}],"circle":[{"data":"gene"},{"data":"drug"}]}})
-        network_graph.update({"genes":{gene:[] for gene in associated_drugs.keys()}})
+                    #if one of the genes is in the gene query
+                    if interaction.gene_source.gene_name in gene_list:
+                        #if the gene has not been seen then add it to the full network and add the node into the full network node list
+                        if interaction.gene_source.gene_name not in full_interaction_indicies:
+                            full_interaction_indicies.update({interaction.gene_source.gene_name:0,"count":1})
+                            network_graph["nodes"].append({"name":interaction.gene_source.gene_name,"url":"drug_search/search","type": interaction.gene_source.category.all()[0].category if len(interaction.gene_source.category.all())>0 else "Regular"})
+                        if interaction.gene_target.gene_name not in full_interaction_indicies:
+                            total_genes.update({interaction.gene_target.gene_name:""})
+                            full_interaction_indicies[interaction.gene_target.gene_name] = full_interaction_indicies["count"]
+                            full_interaction_indicies["count"] = full_interaction_indicies["count"] + 1
+                            network_graph["nodes"].append({"name":interaction.gene_target.gene_name,"url":"drug_search/search","type": interaction.gene_target.category.all()[0].category if len(interaction.gene_target.category.all())>0 else "Regular"})
+                        network_graph["links"].append({"source":full_interaction_indicies[interaction.gene_source.gene_name],"target":full_interaction_indicies[interaction.gene_target.gene_name],"type":case})
+                        other_interactions = Interactions.objects.filter(Q(gene_source=interaction.gene_target.gene_name)&Q(gene_target__in=filter(lambda x:x != "count" and x != interaction.gene_source.gene_name,full_interaction_indicies.keys()))|Q(gene_target=interaction.gene_target.gene_name)&Q(gene_source__in=filter(lambda x:x != "count" and x != interaction.gene_source.gene_name,full_interaction_indicies.keys())))
+                        for other_interaction in other_interactions:
+                            network_graph["links"].append({"source":full_interaction_indicies[other_interaction.gene_source.gene_name],"target":full_interaction_indicies[other_interaction.gene_target.gene_name],"type":"Indirect"})
+                    else:
+                        #if the gene has not been seen then add it to the full network and add the node into the full network node list
+                        if interaction.gene_target.gene_name not in full_interaction_indicies:
+                            full_interaction_indicies.update({interaction.gene_target.gene_name:0,"count":1})
+                            network_graph["nodes"].append({"name":interaction.gene_target.gene_name,"url":"drug_search/search","type": interaction.gene_target.category.all()[0].category if len(interaction.gene_target.category.all())>0 else "Regular"})
+                        if interaction.gene_source.gene_name not in full_interaction_indicies:
+                            total_genes.update({interaction.gene_source.gene_name:""})
+                            full_interaction_indicies[interaction.gene_source.gene_name] = full_interaction_indicies["count"]
+                            full_interaction_indicies["count"] = full_interaction_indicies["count"] + 1
+                            network_graph["nodes"].append({"name":interaction.gene_source.gene_name,"url":"drug_search/search","type": interaction.gene_source.category.all()[0].category if len(interaction.gene_source.category.all())>0 else "Regular"})
+                        network_graph["links"].append({"source":full_interaction_indicies[interaction.gene_target.gene_name],"target":full_interaction_indicies[interaction.gene_source.gene_name],"type":case})
+                        other_interactions = Interactions.objects.filter(Q(gene_source=interaction.gene_source.gene_name)&Q(gene_target__in=filter(lambda x:x != "count" and x != interaction.gene_target.gene_name,full_interaction_indicies.keys()))|Q(gene_target=interaction.gene_source.gene_name)&Q(gene_source__in=filter(lambda x:x != "count" and x != interaction.gene_target.gene_name,full_interaction_indicies.keys())))
+                        for other_interaction in other_interactions:
+                            network_graph["links"].append({"source":full_interaction_indicies[other_interaction.gene_source.gene_name],"target":full_interaction_indicies[other_interaction.gene_target.gene_name],"type":"Indirect"})
+        network_graph.update({"legend":{"line":[{"data":"One Source","type":"Single"}, {"data":"Two Sources","type":"Double"}],"circle":[{"data":"Drugable","type":"Drugable"},{"data":"Non-Drugable","type":"Regular"}]}})
+        if mode != "mini":
+            network_graph.update({"genes":total_genes})
         #return the json data
         return HttpResponse(json.dumps(network_graph), content_type='application/json')
     else:
