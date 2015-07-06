@@ -38,6 +38,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'drug_search',
+    'tribe_client',
 )
 
 MIDDLEWARE_CLASSES = (
