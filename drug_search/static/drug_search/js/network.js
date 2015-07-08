@@ -107,7 +107,7 @@ function load_graph(data,phenotypes,mode)
             var height = 600;
             var offset = 12.5;
             var offset_space = 25;
-            var link_offset = 500;
+            var link_offset = 300;
             //create a force graph layout https://github.com/mbostock/d3/wiki/Force-Layout
             var force = d3.layout.force()
             .nodes(d3.values(data["nodes"]))

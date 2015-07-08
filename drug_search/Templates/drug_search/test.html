@@ -1,0 +1,13 @@
+{% extends "drug_search/drug_base.html" %}
+{% load staticfiles %}
+{%block headlink %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js" charset="utf-8"></script>
+<script src="{% static 'drug_search/js/test.js' %}"></script>
+{% endblock %}
+{%block body_content %}
+<div id="scatterplot">
+</div>
+<script>
+    load(data_set,margin);
+</script>
+{% endblock %}
