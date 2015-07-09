@@ -126,14 +126,13 @@ def networktize(request):
         full_interaction_indicies = {}
         total_genes = {}
         for gene_name in gene_list:
-            interactions = Interactions.objects.filter((Q(gene_source=gene_name)|Q(gene_target=gene_name))&Q(source__in=["String"]))
+            interactions = Interactions.objects.filter((Q(gene_source=gene_name)|Q(gene_target=gene_name))&Q(source__in=["Dapple"]))
             for interaction in interactions:
                 case = "Double" if len(interaction.source.all()) > 1 else "Single"
                 if mode=="mini":
                     #only include iteractions that are in the query list
                     # if both genes are in the gene query
                     if interaction.gene_source.gene_name in gene_list and interaction.gene_target.gene_name in gene_list:
-                        #since both genes are in the gene query add it to the mini network
                         if interaction.gene_source.gene_name not in mini_interaction_indicies:
                             mini_interaction_indicies.update({interaction.gene_source.gene_name:index})
                             network_graph["nodes"].append({"name":interaction.gene_source.gene_name,"url":"drug_search/search","type": interaction.gene_source.category.all()[0].category if len(interaction.gene_source.category.all())>0 else "Regular"})
@@ -145,6 +144,16 @@ def networktize(request):
                         #don't want the gene to target itself
                         if interaction.gene_source.gene_name != interaction.gene_target.gene_name:
                             network_graph["links"].append({"source":mini_interaction_indicies[interaction.gene_source.gene_name],"target":mini_interaction_indicies[interaction.gene_target.gene_name],"type":case})
+                    elif interaction.gene_source.gene_name in gene_list:
+                        if interaction.gene_source.gene_name not in mini_interaction_indicies:
+                            mini_interaction_indicies.update({interaction.gene_source.gene_name:index})
+                            network_graph["nodes"].append({"name":interaction.gene_source.gene_name,"url":"drug_search/search","type": interaction.gene_source.category.all()[0].category if len(interaction.gene_source.category.all())>0 else "Regular"})
+                            index = index + 1
+                    else:
+                        if interaction.gene_target.gene_name not in mini_interaction_indicies:
+                            mini_interaction_indicies.update({interaction.gene_target.gene_name:index})
+                            network_graph["nodes"].append({"name":interaction.gene_target.gene_name,"url":"drug_search/search","type": interaction.gene_target.category.all()[0].category if len(interaction.gene_target.category.all())>0 else "Regular"})
+                            index = index + 1
                 else:
                     #if one of the genes is in the gene query
                     if interaction.gene_source.gene_name in gene_list:
@@ -158,7 +167,7 @@ def networktize(request):
                             full_interaction_indicies["count"] = full_interaction_indicies["count"] + 1
                             network_graph["nodes"].append({"name":interaction.gene_target.gene_name,"url":"drug_search/search","type": interaction.gene_target.category.all()[0].category if len(interaction.gene_target.category.all())>0 else "Regular"})
                         network_graph["links"].append({"source":full_interaction_indicies[interaction.gene_source.gene_name],"target":full_interaction_indicies[interaction.gene_target.gene_name],"type":case})
-                        other_interactions = Interactions.objects.filter((Q(gene_source=interaction.gene_target.gene_name)&Q(gene_target__in=filter(lambda x:x != "count" and x != interaction.gene_source.gene_name,full_interaction_indicies.keys()))|Q(gene_target=interaction.gene_target.gene_name)&Q(gene_source__in=filter(lambda x:x != "count" and x != interaction.gene_source.gene_name,full_interaction_indicies.keys())))&Q(source__in=["String"]))
+                        other_interactions = Interactions.objects.filter((Q(gene_source=interaction.gene_target.gene_name)&Q(gene_target__in=filter(lambda x:x != "count" and x != interaction.gene_source.gene_name,full_interaction_indicies.keys()))|Q(gene_target=interaction.gene_target.gene_name)&Q(gene_source__in=filter(lambda x:x != "count" and x != interaction.gene_source.gene_name,full_interaction_indicies.keys())))&Q(source__in=["Dapple"]))
                         #for other_interaction in other_interactions:
                         #    network_graph["links"].append({"source":full_interaction_indicies[other_interaction.gene_source.gene_name],"target":full_interaction_indicies[other_interaction.gene_target.gene_name],"type":"Indirect"})
                     else:
@@ -172,7 +181,7 @@ def networktize(request):
                             full_interaction_indicies["count"] = full_interaction_indicies["count"] + 1
                             network_graph["nodes"].append({"name":interaction.gene_source.gene_name,"url":"drug_search/search","type": interaction.gene_source.category.all()[0].category if len(interaction.gene_source.category.all())>0 else "Regular"})
                         network_graph["links"].append({"source":full_interaction_indicies[interaction.gene_target.gene_name],"target":full_interaction_indicies[interaction.gene_source.gene_name],"type":case})
-                        other_interactions = Interactions.objects.filter((Q(gene_source=interaction.gene_source.gene_name)&Q(gene_target__in=filter(lambda x:x != "count" and x != interaction.gene_target.gene_name,full_interaction_indicies.keys()))|Q(gene_target=interaction.gene_source.gene_name)&Q(gene_source__in=filter(lambda x:x != "count" and x != interaction.gene_target.gene_name,full_interaction_indicies.keys())))&Q(source__in=["String"]))
+                        other_interactions = Interactions.objects.filter((Q(gene_source=interaction.gene_source.gene_name)&Q(gene_target__in=filter(lambda x:x != "count" and x != interaction.gene_target.gene_name,full_interaction_indicies.keys()))|Q(gene_target=interaction.gene_source.gene_name)&Q(gene_source__in=filter(lambda x:x != "count" and x != interaction.gene_target.gene_name,full_interaction_indicies.keys())))&Q(source__in=["Dapple"]))
                         #for other_interaction in other_interactions:
                         #    network_graph["links"].append({"source":full_interaction_indicies[other_interaction.gene_source.gene_name],"target":full_interaction_indicies[other_interaction.gene_target.gene_name],"type":"Indirect"})
         network_graph.update({"legend":{"line":[{"data":"One Source","type":"Single"}, {"data":"Two Sources","type":"Double"}],"circle":[{"data":"Drugable","type":"Drugable"},{"data":"Non-Drugable","type":"Regular"}]}})

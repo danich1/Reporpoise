@@ -11,8 +11,6 @@ class GeneCategory(models.Model):
 class Gene(models.Model):
     gene_name = models.CharField(max_length=100,primary_key=True, default='unknown')
     gene_id = models.CharField(max_length=100, default='unknown')
-    uniprot_id = models.CharField(max_length=100, default='unknown')
-    name = models.CharField(max_length=200, default='unknown')
     interact = models.ManyToManyField('self', through='Interactions',symmetrical=False)
     category = models.ManyToManyField(GeneCategory)
 

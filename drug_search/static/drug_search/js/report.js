@@ -44,7 +44,6 @@ function load(gene_list)
             $scope.hide=false;
             $scope.gene = active_gene;
             generate_cloud($scope.drug_data,$scope.gene);
-            //draw_graph($scope.network_data,$scope.gene);
             document.getElementById("gene_network_name").value = $scope.gene;
         };
         // this will show the networkize it button
@@ -101,7 +100,6 @@ function load(gene_list)
             {
                 $scope.gene_color_class[gene] = drug_group[gene][0].name;
             }    
-            console.log($scope.gene_color_class);
         };
         $scope.form_submit = function(name)
         {
@@ -133,7 +131,6 @@ function load(gene_list)
                 $scope.drug_group = response["categories"];
                 $scope.phenotype_list = response["phenotypes"];
                 $scope.set_color_class($scope.drug_group);
-                console.log($scope.gene_color_class);
                 $http.get("networktize",{
                     params:
                     {
@@ -145,7 +142,7 @@ function load(gene_list)
                 {
                     console.log(response);
                     $scope.network_data = response;
-                    draw_graph($scope.network_data,"");
+                    draw_network($scope.network_data,455,355,undefined,$scope.drug_group);
                     $timeout(function()
                     {
                         $scope.finished=true;
@@ -192,134 +189,6 @@ function load(gene_list)
             }
         }
     });
-}
-//background-color: hsla({% verbatim %}{{drug_data[gene]|get_color}}{% endverbatim %}, 100%, 47%, 0.63);
-function draw_graph(network_data,gene_name)
-{
-    var gene_network = document.getElementById("gene_network");
-    var width = gene_network.clientWidth;
-    width = 455;
-    var height = 355;
-    var width_offset = 10;
-    var offset = 12.5;
-    var offset_space = 25;
-    /*if (gene_name == "")
-    {
-        data = network_data["mini"];
-    }
-    else
-    {
-        data = network_data["full"][gene_name];
-        d3.select("#gene_network").selectAll("svg").remove();
-    }*/
-    data = network_data;
-    console.log(data);
-    var data_legend = network_data["legend"];
-
- //create a force graph layout https://github.com/mbostock/d3/wiki/Force-Layout
-    var force = d3.layout.force()
-    .nodes(d3.values(data["nodes"]))
-    .links(data["links"])
-    .size([width,height])
-    .linkDistance(100)
-    .charge(-170)
-    .start();
-
-    //create an svg object by selecting the tag that has the gene_network id 
-    var svg = d3.select("#gene_network")
-    .append("svg")
-    .attr("width",width)
-    .attr("height",height)
-
- //create a legend for the gene network
-    var legend = svg.append("g")
-    .attr("class", "legend")
-    .attr("transform", "translate(" + (width_offset) + "," + 20 + ")");
-    
-    legend.append("rect")
-    .attr("id", "legend_border")
-    .attr("width", 139)
-    .attr("height", 100);
-
-    //append the symbols and the names they represent
-    var legend_line = legend.selectAll("line")
-    .data(data_legend.line)
-    .enter().append("line")
-    .attr("class",function(d){return d.type})
-    .attr("x1",3)
-    .attr("y1",function(d,i){return offset+(i*offset_space)})
-    .attr("x2",25)
-    .attr("y2",function(d,i){return offset+(i*offset_space)});
-
-    var legend_circle = legend.selectAll("circle")
-    .data(data_legend.circle)
-    .enter().append("circle")
-    .attr("r", 7.5)
-    .attr("cx", 12.5)
-    .attr("cy",function(d,i){return (offset*3)+((i+1)*offset_space)})
-    .attr("class", function(d){return d.type});
-
-    var legend_text = legend.selectAll('text')
-    .data(d3.merge([data_legend.line,data_legend.circle]))
-    .enter().append('text')
-    .attr("x",50)
-    .attr("y",function(d,i) {return offset+((i*offset_space)+4)})
-    .text(function(d){return d.data});
-
-    //create the paths using the force links
-    var path = svg.append("g").selectAll(".link")
-    .data(force.links())
-    .enter().append("line")
-    .attr("class", function(d) { return d.type});
-
-    //create the circle nodes using the force.nodes data
-    var circle = svg.append("g").attr("id","graph_nodes").selectAll("circle")
-    .data(force.nodes())
-    .enter().append("circle")
-    .attr("r",7.5)
-    .attr("class", function(d) { return d.type})
-    .attr("ng-href", "#myModal")
-    .on("dblclick", function(d,i)
-    {
-        console.log($scope.switch_case);
-        if (d.type == "gene")
-        {
-            //console.log(d);
-            $scope.switch_case = true;
-            $scope.drug_list = $scope.drug_data[d.name];
-            $scope.gene_name = d.name;
-            $scope.$apply();
-        }
-    })
-    .call(force.drag);
-    //append a title to each node
-    circle.append("title").text(function(d){return d.name});
-
-    //append text to each gene node to show the name of each gene
-    var text = svg.append("g").selectAll("text")
-    .data(force.nodes())
-    .enter().append("text")
-    .attr("x", 8)
-    .attr("y", ".31em")
-    .attr("class", function(d){return d.type})
-    .text(function(d){ return d.name;});
-
-    // apply the physics simulation on the gene network graph
-    force.on("tick", function()
-    {
-        path.attr("x1", function(d) { return d.source.x; })
-        .attr("y1", function(d) { return d.source.y; })
-        .attr("x2", function(d) { return d.target.x; })
-        .attr("y2", function(d) { return d.target.y; });
-        circle.attr("transform", transform);
-        text.attr("transform", transform);
-    });
-
-       
-}
-/* translate the groupped elements to a given position*/
-function transform(d) {
-  return "translate(" + d.x + "," + d.y + ")";
 }
 function generate_cloud(drug_data, gene_name)
 {

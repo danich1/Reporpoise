@@ -1,9 +1,13 @@
+.outer
+{
+    fill:white;
+    stroke:green;
+    stroke-width:2px;
+}
 /*This targets the gene class (node)*/
 .Drugable
 {
     fill:blue;
-    stroke:green;
-    stroke-width:3px;
     opacity: 1;
 }
 /*This targets the gene class text (node)*/
@@ -17,9 +21,13 @@ text.Drugable
 .Regular
 {
     fill:blue;
+    stroke:red;
+    stroke-width: 3px;
+    stroke-dasharray: 5,2;
 }
 text.Regular
 {
+    stroke:none;
     fill:black;
     opacity:.80;
     font-weight:bold;
