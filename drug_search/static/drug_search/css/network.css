@@ -1,0 +1,20 @@
+/*This is for the network.html template only*/
+.table_scroll
+{
+    width:450px;
+    height:400px;
+    overflow:scroll;
+}
+.table_condensed
+{
+    width:250px;
+}
+#linkrow:hover th:nth-child(1)
+{
+     color:blue;
+}
+.modal#progress_bar
+{
+    position: absolute;
+    top: 50%;
+}
