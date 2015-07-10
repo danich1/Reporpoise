@@ -1,10 +1,12 @@
 /*
 This function loads the graph data.
 params: data which is the gene_name of a given gene (ex MAPK1)
-returns: calls the draw_graph function to use d3 to graph the gene network
+returns: calls the draw_network function to use d3 to graph the gene network
 */
 function load_graph(data,phenotypes,mode)
 {
+    // fix the data for a json object
+    data = data.replace(/&quot;/g,'\'');
     phenotypes = decodeHTML(phenotypes);
     var app = angular.module('drug_search', []);
     //enable angular to use html5 urls
@@ -30,6 +32,7 @@ function load_graph(data,phenotypes,mode)
                 }
             }
         };
+        // make sure to change when necessary
         $scope.update_graph = function(category)
         {
             var found_category = false;
@@ -90,126 +93,12 @@ function load_graph(data,phenotypes,mode)
             document.body.appendChild(form);
             form.submit();
         };
-        /*
-        This function will draw a graph network using d3.
-        params: data a listing of links and nodes needed for d3 ex {"nodes":[{"name":"MAPK1"}], "links":[{"target":<index of nodes>,"source":<index of nodes>}]}
-        returns: a drawn gene node graph
-        */
-        $scope.draw_graph = function(data)
-        {
-            var index = -1;
-            //The dimensions of the gene network and the offset values for the legend
-            var width = document.body.offsetWidth || document.body.clientWidth;
-            var width_offset = 100;
-            var height = 600;
-            var offset = 12.5;
-            var offset_space = 25;
-
-            //create a force graph layout https://github.com/mbostock/d3/wiki/Force-Layout
-            var force = d3.layout.force()
-            .nodes(d3.values(data["nodes"]))
-            .links(data["links"])
-            .size([width,height])
-            .linkDistance(100)
-            .charge(-170)
-            .start();
-
-            //create an svg object by selecting the tag that has the gene_network id 
-            var svg = d3.select("#gene_network")
-            .append("svg")
-            .attr("width",width)
-            .attr("height",height)
-
-            //create the paths using the force links
-            var path = svg.append("g").selectAll(".link")
-            .data(force.links())
-            .enter().append("line")
-            .attr("class", function(d) { return d.type});
-
-            //create the circle nodes using the force.nodes data
-            var circle = svg.append("g").attr("id","graph_nodes").selectAll("circle")
-            .data(force.nodes())
-            .enter().append("circle")
-            .attr("r",7.5)
-            .attr("class", function(d) { return d.type})
-            .attr("ng-href", "#myModal")
-            .on("dblclick", function(d,i)
-            {
-                console.log($scope.switch_case);
-                if (d.type == "gene")
-                {
-                    //console.log(d);
-                    $scope.switch_case = true;
-                    $scope.drug_list = $scope.drug_data[d.name];
-                    $scope.gene_name = d.name;
-                    $scope.$apply();
-                }
-            })
-            .call(force.drag);
-            //append a title to each node
-            circle.append("title").text(function(d){return d.name});
-
-            //append text to each gene node to show the name of each gene
-            var text = svg.append("g").selectAll("text")
-            .data(force.nodes())
-            .enter().append("text")
-            .attr("x", 8)
-            .attr("y", ".31em")
-            .attr("class", function(d){return d.type})
-            .text(function(d){ return d.name;});
-
-        // apply the physics simulation on the gene network graph
-        force.on("tick", function()
-        {
-            path.attr("x1", function(d) { return d.source.x; })
-            .attr("y1", function(d) { return d.source.y; })
-            .attr("x2", function(d) { return d.target.x; })
-            .attr("y2", function(d) { return d.target.y; });
-            circle.attr("transform", transform);
-            text.attr("transform", transform);
-        });
-
-        //create a legend for the gene network
-        var legend = svg.append("g")
-        .attr("class", "legend")
-        .attr("transform", "translate(" + (width_offset) + "," + 20 + ")");
-        
-        legend.append("rect")
-        .attr("id", "legend_border")
-        .attr("width", 150)
-        .attr("height", 100);
-
-        //append the symbols and the names they represent
-        var legend_line = legend.selectAll("line")
-        .data(data.legend.line)
-        .enter().append("line")
-        .attr("class",function(d){return d.type})
-        .attr("x1",3)
-        .attr("y1",function(d,i){return offset+(i*offset_space)})
-        .attr("x2",25)
-        .attr("y2",function(d,i){return offset+(i*offset_space)});
-
-        var legend_circle = legend.selectAll("circle")
-        .data(data.legend.circle)
-        .enter().append("circle")
-        .attr("r", 7.5)
-        .attr("cx", 12.5)
-        .attr("cy",function(d,i){return (offset*3)+((i+1)*offset_space)})
-        .attr("class", function(d){return d.data});
-
-        var legend_text = legend.selectAll('text')
-        .data(d3.merge([data.legend.line,data.legend.circle]))
-        .enter().append('text')
-        .attr("x",50)
-        .attr("y",function(d,i) {return offset+((i*offset_space)+4)})
-        .text(function(d){return d.data});
-        };
         //use http get request to get the gene network id
         $http.get("networktize",{
             params:
             {
                 "mode":mode,
-                "gene":data,
+                "genes":data,
                 "acceptable_genes":$scope.phenotype_list
             }
         })
@@ -217,7 +106,6 @@ function load_graph(data,phenotypes,mode)
         .success(
             function(response) 
             {
-                //console.log(response);
                 $scope.graph = response;
                 $http.get("grab_data",{
                     params:
@@ -228,6 +116,7 @@ function load_graph(data,phenotypes,mode)
                 })
                 .success(function(response)
                 {
+                    //console.log(response);
                     //merge the pheno type data
                     $scope.phenotype_list=merge($scope.phenotype_list, response["phenotypes"]["pheno_data"]);
                     //$scope.phenotype_categories= response["phenotypes"]["pheno_list"];
@@ -236,7 +125,7 @@ function load_graph(data,phenotypes,mode)
                     var progress = document.getElementById("bar");
                     progress.style="width:66%";
                     progress.textContent="Drawing The Network!!!";
-                    $scope.draw_graph($scope.graph);
+                    draw_network($scope.graph,600,1280,$scope,response["categories"]);
                     $timeout(function()
                     {
                         progress.style="width:100%";
@@ -274,11 +163,6 @@ function load_graph(data,phenotypes,mode)
             }
         }
     });
-}
-
-/* translate the groupped elements to a given position*/
-function transform(d) {
-  return "translate(" + d.x + "," + d.y + ")";
 }
 function decodeHTML(data_str)
 {

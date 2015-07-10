@@ -1,38 +1,53 @@
-/*This targets the drug class (node)*/
-.drug
+.outer
 {
-    fill:black;
-    stroke:orange;
+    fill:white;
+    stroke:green;
     stroke-width:2px;
-    opacity: 1;
-}
-/*Hide the drug text for each drug node*/
-text.drug
-{
-    display:none;
 }
 /*This targets the gene class (node)*/
-.gene
+.Drugable
 {
-    fill:SaddleBrown;
+    fill:blue;
     opacity: 1;
 }
 /*This targets the gene class text (node)*/
-text.gene
+text.Drugable
 {
+    fill:black;
+    stroke:none;
+    opacity:.80;
+    font-weight:bold;
+}
+.Regular
+{
+    fill:blue;
+    stroke:red;
+    stroke-width: 3px;
+    stroke-dasharray: 5,2;
+}
+text.Regular
+{
+    stroke:none;
     fill:black;
     opacity:.80;
     font-weight:bold;
 }
 /*This targets the single interaction class (link)*/
-.single
+.Single
 {
-    stroke: red;
+    stroke: yellow;
+    stroke-opacity:.75;
 }
 /*This targets the double interaction class (link)*/
-.double
+.Double
 {
-    stroke: PaleTurquoise;
+    stroke: red;
+    stroke-opacity:.8;
+}
+.Indirect
+{
+    stroke:grey;
+    stroke-opacity:.45;
 }
 /*This targets the legend id (node)*/
 #legend_border

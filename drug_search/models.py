@@ -1,14 +1,34 @@
 from django.db import models
 
+#This model is suppose to show if a gene is drugable or not. I left it open in case Ben wants more details
+class GeneCategory(models.Model):
+    category = models.CharField(max_length=100, primary_key=True, default='unknown')
+
+    def __str__(self):
+        return self.category
+
 # This is the gene model that represents a given Gene
 class Gene(models.Model):
     gene_name = models.CharField(max_length=100,primary_key=True, default='unknown')
     gene_id = models.CharField(max_length=100, default='unknown')
-    uniprot_id = models.CharField(max_length=100, default='unknown')
-    name = models.CharField(max_length=200, default='unknown')
+    interact = models.ManyToManyField('self', through='Interactions',symmetrical=False)
+    category = models.ManyToManyField(GeneCategory)
 
     def __str__(self):
         return self.gene_name
+
+#This is the source table which holds the values Dapple or String database. It keeps reference where the interactions came from
+class Source(models.Model):
+    source = models.CharField(max_length=100, primary_key=True, default='unknown')
+
+    def __str__(self):
+        return self.source
+
+#This is a test table
+class Interactions(models.Model):
+    gene_source = models.ForeignKey(Gene)
+    gene_target = models.ForeignKey(Gene,related_name='gene_targets')
+    source = models.ManyToManyField(Source)
 
 #This is the Drug Group Model that represents which drug group a given Drug belongs
 class Group(models.Model):
@@ -62,4 +82,4 @@ class PhenotypeMap(models.Model):
     phenotype = models.ForeignKey(Phenotype)
     z_score = models.FloatField()
     def __str__(self):
-        "Gene:%s, Phenotype:%s, Z-score:%.2f" % (str(self.gene), str(self.phenotype), z_score)
+        return "Gene:%s, Phenotype:%s, Z-score:%.2f" % (str(self.gene), str(self.phenotype), z_score)

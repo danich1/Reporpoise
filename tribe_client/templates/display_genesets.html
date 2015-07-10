@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="hero-unit" >
+    <br>
+    <h2>Manage gene sets</h2>
+    <table class = "table table-bordered" border="2">
+        <tr><th>Gene set title</th></tr>
+        {% for geneset in genesets %}
+        <tr>
+            <td><a href="{% url "display_versions" access_token geneset.id %}">{{ geneset.title }}</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+
+</div>
+
+{% endblock %}
+

@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+
+<div class="hero-unit" >
+    <br>
+    <form action = "{% url "display_genesets" access_token %}" method="get">
+    {% csrf_token %}
+    <button class="btn btn-large btn-success" type="submit">
+        <i class="icon-ok"></i> Show Gene Sets! </button>
+
+    </form>
+</div>
+
+{% endblock %}
+
+

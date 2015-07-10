@@ -1,0 +1,1 @@
+python database.py --masterlist master_list.txt --dgidb DGIdb/categories.tsv --string String/9606.protein.actions.v10.txt --inweb INweb/InWeb3_HC_NonRed.txt,INweb/IWtoHugo --drugbank drugbank.xml

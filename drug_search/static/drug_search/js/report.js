@@ -32,6 +32,7 @@ function load(gene_list)
         //Hide the necessary table until a gene has been clicked on
         $scope.hide=true;
         $scope.finished = false;
+        $scope.gene_color_class = {};
         //open the drug bank webpage based on gene id
         $scope.open_gene = function(link)
         {
@@ -48,7 +49,7 @@ function load(gene_list)
         // this will show the networkize it button
         $scope.gene_picked = function()
         {
-            return typeof $scope.gene != 'undefined';
+            return typeof($scope.gene) != 'undefined';
         };
         //make the table of contents visible based on active gene
         $scope.show_table = function(active_gene)
@@ -93,6 +94,13 @@ function load(gene_list)
             }
             return "none";  
         };
+        $scope.set_color_class = function(drug_group)
+        {
+            for (var gene in drug_group)
+            {
+                $scope.gene_color_class[gene] = drug_group[gene][0].name;
+            }    
+        };
         $scope.form_submit = function(name)
         {
             var form = document.getElementById("networkform");
@@ -108,7 +116,7 @@ function load(gene_list)
             params:
             {
                 "flag":"None",
-                "genes":gene_list
+                "genes":gene_list,
             }
         })
         .success(
@@ -122,10 +130,30 @@ function load(gene_list)
                 $scope.drug_data = response["drugs"];
                 $scope.drug_group = response["categories"];
                 $scope.phenotype_list = response["phenotypes"];
-                $timeout(function()
+                $scope.set_color_class($scope.drug_group);
+                $http.get("networktize",{
+                    params:
+                    {
+                    "genes":$scope.phenotype_list,
+                    "mode":"mini"
+                    }
+                })
+                .success(function(response)
+                {
+                    console.log(response);
+                    $scope.network_data = response;
+                    draw_network($scope.network_data,455,355,undefined,$scope.drug_group);
+                    $timeout(function()
                     {
                         $scope.finished=true;
                     },2000);
+                })
+                .error(
+                    function(response)
+                    {
+                        document.write(response);
+                    }
+                );
 
             }
         )
@@ -164,8 +192,12 @@ function load(gene_list)
 }
 function generate_cloud(drug_data, gene_name)
 {
-    document.getElementById("word_cloud").innerHTML="";
-    d3.layout.cloud().size([488,350])
+    var word_cloud = document.getElementById("word_cloud");
+    word_cloud.innerHTML="";
+    var width = word_cloud.clientWidth;
+    var height = 355
+    //Have to figure out height later
+    d3.layout.cloud().size([width,height])
     .words([
         "Hello", "world", "normally", "you", "want", "more", "words",
         "than", "this"].map(function(d) {
