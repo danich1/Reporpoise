@@ -36,7 +36,7 @@ function load(gene_list)
         //open the drug bank webpage based on gene id
         $scope.open_gene = function(link)
         {
-            $window.open("http://www.drugbank.ca/biodb/polypeptides/"+link['uniprot'],"_blank");
+            $window.open("http://www.ensembl.org/Homo_sapiens/Gene/Summary?g="+link['ensembl'],"_blank");
         };
         //set up the parameters to show the table of contents
         $scope.change_table = function(active_gene)

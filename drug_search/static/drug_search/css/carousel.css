@@ -19,7 +19,8 @@
     transition: transform 1s;
 }
 /*This targets the carousel's figure tags in report.html*/
-#carousel figure {
+#carousel figure 
+{
     display: block;
     position: absolute;
     width: 150px;
@@ -27,12 +28,11 @@
     left: 20px;
     top: 20px;
     border: 2px solid black;
-    /*font-size: 40px;
-    font-weight: bold;*/
     color: white;
     font-size:30px;
     text-align: center;
-
+    /*font-size: 40px;
+    font-weight: bold;*/
 }
 /*This targets the right button id in report.html*/
 #right_button

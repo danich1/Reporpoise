@@ -1,12 +1,10 @@
-import xml.etree.ElementTree as ET
+import xml.etree.cElementTree as ET
 import sys 
 import getopt
 import time
-import pickle
-import pdb
 import codecs
 import tqdm
-#dependencies (Need drugbank.xml, InWeb3_HC_NonRed.txt, IWtoHugo)
+#dependencies (Need drugbank.xml, InWeb3_HC_NonRed.txt, IWtoHugo, need string human data files)
 #I discovered the beauty of json :D
 def fill_data_master_list(file_name):
     gene_protein_map = {}
@@ -21,8 +19,10 @@ def fill_data_master_list(file_name):
             if gene_entry[header_map["Associated Gene Name"]] not in gene_protein_map:
                 gene_protein_map.update({gene_entry[header_map["Ensembl Protein ID"]]:""})
             gene_protein_map[gene_entry[header_map["Ensembl Protein ID"]]] = gene_entry[header_map["Associated Gene Name"]]
-    return [gene_entries,gene_protein_map, header_map]
-
+        #create a dictionary with the remaining data in order to use it later in drug bank section
+        gene_entries = {gene_entry[header_map["Associated Gene Name"]]:[gene_entry[header_map["Ensembl Gene ID"]],gene_entry[header_map["Gene Start (bp)"]],gene_entry[header_map["Gene End (bp)"]]] for gene_entry in gene_entries}
+    return (gene_entries,gene_protein_map)
+#@profile
 def fill_data_inweb(interaction_file_name, gene_name_file_name):
     gene_id_map = {}
     with open(interaction_file_name, "r") as f:
@@ -35,6 +35,7 @@ def fill_data_inweb(interaction_file_name, gene_name_file_name):
         interactions = map(lambda x: [gene_id_map[x[0][:-2]],gene_id_map[x[1][:-2]]], lines)
     return (interactions,gene_id_map)
 
+#@profile
 def fill_data_string(file_name, interaction_set,gene_protein_map,iteration,allowed_gene_names):
     alias_source = ""
     alias_target = ""
@@ -64,7 +65,7 @@ def fill_data_string(file_name, interaction_set,gene_protein_map,iteration,allow
                         interaction_set[reverse_interaction_string]["source"].append("String")
                         already_seen_interaction.add(reverse_interaction_string)
     return interaction_set
-
+#@profile
 def fill_data_DGIdb(file_name):
     with open(file_name,"r") as f:
        throw_away = f.readline()
@@ -72,8 +73,10 @@ def fill_data_DGIdb(file_name):
        genes = filter(lambda x: x[3].strip() == "DRUGGABLE GENOME", genes)
     return set([gene[0] for gene in genes])
 
+#@profile
 def fill_data_drug_bank(tree_root, drug_dict,allowed_gene_names):
     gene_data = []
+    gene_group_map = {}
     for drug in tqdm.tqdm(tree_root):
         for child in drug:
             if "{http://www.drugbank.ca}drugbank-id" in child.tag:
@@ -100,10 +103,10 @@ def fill_data_drug_bank(tree_root, drug_dict,allowed_gene_names):
                                             if "{http://www.drugbank.ca}action" in sub_sub_sub_child.tag:
                                                 gene_data.append(sub_sub_sub_child.text)
                                 elif "{http://www.drugbank.ca}polypeptide" in sub_sub_child.tag:
-                                    Uniprot_ID = sub_sub_child.attrib["id"]
                                     for sub_sub_sub_child in sub_sub_child:
                                         if "{http://www.drugbank.ca}gene-name" in sub_sub_sub_child.tag:
                                             if sub_sub_sub_child.text in allowed_gene_names:
+                                                gene_group_map[sub_sub_sub_child.text]=drug_dict["groups"][0]
                                                 drug_dict["gene"].append((gene_data,sub_sub_sub_child.text))
                                 else:
                                     pass
@@ -111,34 +114,31 @@ def fill_data_drug_bank(tree_root, drug_dict,allowed_gene_names):
                     else:
                         skip = True
         if not(skip):
-            yield drug_dict
+            yield (drug_dict,gene_group_map)
         drug_dict = {"DB_ID":[],"groups":[],"gene":[]}
         gene_dict = {}
-
+        gene_group_map = {}
+#@profile
 def main(argv=sys.argv):
     system_options = dict(getopt.getopt(argv[1:], '',['drugbank=', 'inweb=', 'string=', 'dgidb=','output=','masterlist='])[0])
     output_str = ""
     total_time = 0
     drugable_genes = set({})
+    gene_tracker = set({})
     interaction_set = {}
     if "--dgidb" in system_options:
         print "Opening the DGIdb file and parsing it....."
         start = time.time()
         drugable_genes = fill_data_DGIdb(system_options["--dgidb"])
-        output_str+="{\n\"fields\":{},\n\"model\":\"drug_search.genecategory\",\n\"pk\":\"Drugable\"\n},\n"
+        output_str+="{\n\"fields\":{},\n\"model\":\"drug_search.group\",\n\"pk\":\"Drugable\"\n},\n"
         end = time.time()
         print "Done Time: %.5f" % (end-start)
         total_time += (end-start)
     if "--masterlist" in system_options:
         print "Opening the Master Gene file and parsing it....."
         start = time.time()
-        gene_list,gene_protein_map,header_map = fill_data_master_list(system_options["--masterlist"])
+        gene_entries,gene_protein_map = fill_data_master_list(system_options["--masterlist"])
         allowed_gene_names = set(gene_protein_map.values())
-        for gene_entry in gene_list:
-            if gene_entry[header_map["Associated Gene Name"]] in drugable_genes:
-                output_str+="{\n\"fields\":{\n\"category\":[\"Drugable\"],\n\"gene_id\":\"%s\"\n},\n\"model\":\"drug_search.gene\",\n\"pk\":\"%s\"\n},\n" % (gene_entry[header_map["Ensembl Gene ID"]],gene_entry[header_map["Associated Gene Name"]])
-            else:
-                output_str+="{\n\"fields\":{\n\"category\":[],\n\"gene_id\":\"%s\"\n},\n\"model\":\"drug_search.gene\",\n\"pk\":\"%s\"\n},\n" % (gene_entry[header_map["Ensembl Gene ID"]],gene_entry[header_map["Associated Gene Name"]])
         end = time.time()
         print "Done Time: %.5f" % (end-start)
         total_time += (end-start)
@@ -154,27 +154,31 @@ def main(argv=sys.argv):
         print "Finished... Time: %.5fs" % (end-start)
         print "Now parsing the data"
         start = time.time()
-        for drug_dict in fill_data_drug_bank(tree.getroot(),{"DB_ID":[],"groups":[],"gene":[]},allowed_gene_names):
+        for drug_dict,gene_group_map in fill_data_drug_bank(tree.getroot(),{"DB_ID":[],"groups":[],"gene":[]},allowed_gene_names):
             #write out group json
             for drug_group in drug_dict["groups"]:
                 if drug_group not in group_tracker:
                     output_str+="{\n\"fields\":{},\n\"model\":\"drug_search.group\",\"pk\":\"%s\"\n},\n" % (drug_group)
                     group_tracker.add(drug_group)
+            for gene in gene_group_map:
+                output_str+="{\n\"fields\":{\n\"category\":[\""+gene_group_map[gene]+"\"],\n\"gene_id\":\"%s\"\n},\n\"model\":\"drug_search.gene\",\n\"pk\":\"%s\"\n},\n" % (gene_entries[gene][0],gene)
+                gene_tracker.add(gene)
             #write out drug json
-            output_str+="{\n\"fields\":{\n\"group\":["
-            for group in drug_dict["groups"]:
-                output_str+= "\""+ group + "\",\n"
-            output_str = output_str[:-2]
-            output_str+="]\n},\n\"model\":\"drug_search.drug\",\n\"pk\":\"%s\"\n},\n" % (drug_dict["name"])
+            output_str+="{\n\"fields\":{\n\"group\":["+",\n".join(["\""+group+"\"" for group in drug_dict["groups"]])+"]\n},\n\"model\":\"drug_search.drug\",\n\"pk\":\"%s\"\n},\n" % (drug_dict["name"])
             #write out drug_id json
             for drugid in drug_dict["DB_ID"]:
                 output_str+="{\n\"fields\":{\n\"name\":\"%s\"\n},\n\"model\":\"drug_search.drugid\",\n\"pk\":\"%s\"\n},\n" % (drug_dict["name"],drugid)
             #write out targets json
             for actions, gene in drug_dict["gene"]:
                 for action in actions:
-                    output_str+="{\n\"fields\":{\n\"action\":\"%s\",\n\"gene\":\"%s\",\n\"drug\":\"%s\"\n},\n\"model\":\"drug_search.targets\",\n\"pk\":%d\n},\n" % (
-                        action, gene, drug_dict["name"],primary_target_id)
+                    output_str+="{\n\"fields\":{\n\"action\":\"%s\",\n\"gene\":\"%s\",\n\"drug\":\"%s\"\n},\n\"model\":\"drug_search.targets\",\n\"pk\":%d\n},\n" % (action, gene, drug_dict["name"],primary_target_id)
                     primary_target_id = primary_target_id + 1
+        #for the rest of the genes that are not in drugbank 
+        for gene in filter(lambda x: x not in gene_tracker,gene_entries.keys()):
+            if gene in drugable_genes:
+                output_str+="{\n\"fields\":{\n\"category\":[\"Drugable\"],\n\"gene_id\":\"%s\"\n},\n\"model\":\"drug_search.gene\",\n\"pk\":\"%s\"\n},\n" % (gene_entries[gene][0],gene)
+            else:
+                output_str+="{\n\"fields\":{\n\"category\":[],\n\"gene_id\":\"%s\"\n},\n\"model\":\"drug_search.gene\",\n\"pk\":\"%s\"\n},\n" % (gene_entries[gene][0],gene)
         end = time.time()
         print "Done Time: %.5fs" % (end-start)
         total_time += (end-start)
@@ -213,9 +217,9 @@ def main(argv=sys.argv):
     if "--string" in system_options or "--inweb" in system_options:
         print "Parsing the Gene interaction list....."
         start = time.time()
-        for interaction_key in tqdm.tqdm(interaction_set):
+        for interaction_key,interaction_values in tqdm.tqdm(interaction_set.iteritems()):
             gene_source, gene_target = interaction_key.split("_")
-            output_str+="{\n\"fields\":\n{\n\"source\":[" + ",".join(["\""+ source_str + "\"" for source_str in interaction_set[interaction_key]["source"]]) + "],\n\"gene_source\":\"%s\",\n\"gene_target\":\"%s\"\n},\n\"model\":\"drug_search.interactions\",\n\"pk\":%d\n},\n" % (gene_source, gene_target,interaction_set[interaction_key]["pk"])
+            output_str+="{\n\"fields\":\n{\n\"source\":[" + ",".join(["\""+ source_str + "\"" for source_str in interaction_values["source"]]) + "],\n\"gene_source\":\"%s\",\n\"gene_target\":\"%s\"\n},\n\"model\":\"drug_search.interactions\",\n\"pk\":%d\n},\n" % (gene_source, gene_target,interaction_values["pk"])
         end = time.time()
         print "Done Time: %.5f" % (end-start)
         total_time+=(end-start)

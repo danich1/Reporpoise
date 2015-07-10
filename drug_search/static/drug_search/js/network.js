@@ -98,8 +98,8 @@ function load_graph(data,phenotypes,mode)
             params:
             {
                 "mode":mode,
-                "genes":data,
-                "acceptable_genes":$scope.phenotype_list
+                "genes":data
+                //"user_phenotype_genes":$scope.phenotype_list
             }
         })
         //on success

@@ -14,9 +14,9 @@
 /*This targets the navbar class in all the html files*/
 .navbar-default
 {
- background-color: #0D024A;
- /*border-top:none;
- border-left:none;
- border-right:none;
- box-shadow:none;*/
+    background-color: #0D024A;
+/*border-top:none;
+border-left:none;
+border-right:none;
+box-shadow:none;*/
 }

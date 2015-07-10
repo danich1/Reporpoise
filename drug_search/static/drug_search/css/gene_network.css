@@ -1,0 +1,72 @@
+/*This is for the gene_network that is used in both report.html and network.html*/
+.outer
+{
+    fill:white;
+    stroke-width:2px;
+    stroke-dasharray:5,3;
+}
+.approved
+{
+    stroke:rgb(111,232,144);
+}
+.investigational
+{
+    stroke:rgb(187,237,47);
+}
+.withdrawn
+{
+    stroke:rgb(240,170,50);
+}
+.experimental
+{
+    stroke:rgb(151,198,247);
+}
+.nutraceutical
+{
+    stroke:rgb(245,115,243);
+}
+.illicit
+{
+    stroke:rgb(255,5,47);
+}
+/*This targets the gene class (node)*/
+.drugable
+{
+    stroke:rgb(0,0,0);
+}
+.none
+{
+    stroke:rgb(120,120,120);
+}
+.inner_none
+{
+    fill:rgb(120,120,120);
+}
+.inner
+{
+    fill:black;
+}
+.text
+{
+    fill:black;
+    stroke:none;
+    opacity:.60;
+    font-weight:bold;
+}
+.direct
+{
+    stroke:rgb(120,120,120);
+    stroke-opacity:.45;
+}
+.indirect
+{
+    stroke:rgb(138,43,226);
+    stroke-opacity:.45;
+}
+/*This targets the legend id (node)*/
+#legend_border
+{
+    fill:rgb(255,255,255);
+    stroke-width:1;
+    stroke:rgb(0,0,0);
+}

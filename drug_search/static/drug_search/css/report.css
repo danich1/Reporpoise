@@ -1,13 +1,8 @@
-/*This targets the table scroll class*/
+/*This is for the report.html template only*/
 .table_scroll
 {
     height:100px;
     overflow:scroll;
-}
-/*This targets the content table id*/
-#content_table
-{
-    height:200px;
 }
 #drug_table_of_contents
 {
@@ -16,68 +11,68 @@
 /*This targets the link row id*/
 #linkrow:hover th:nth-child(1)
 {
-     color:blue;
+   color:blue;
 }
 /*.table-striped>tbody>tr:nth-child(odd)>td, 
 .table-striped>tbody>tr:nth-child(odd)>th {
-   background-color: #75FFFF;
- }*/
+background-color: #75FFFF;
+}*/
 .approved
- {
+{
     background-color:rgb(111,232,144);
- }
- figure.approved
- {
+}
+figure.approved
+{
     background-color:rgba(111,232,144,.6);
- }
+}
 .investigational
- {
+{
     background-color:rgb(187,237,47);
- }
- figure.investigational
- {
+}
+figure.investigational
+{
     background-color:rgb(187,237,47,0.6);
- }
- .withdrawn
- {
+}
+.withdrawn
+{
     background-color:rgb(240,170,50);
- }
- figure.withdrawn
- {
+}
+figure.withdrawn
+{
     background-color:rgb(240,170,50,0.6);
- }
- .experimental
- {
+}
+.experimental
+{
     background-color:rgb(151,198,247);
- }
- figure.experimental
- {
+}
+figure.experimental
+{
     background-color:rgb(151,198,247,0.6);
- }
- .nutraceutical
- {
+}
+.nutraceutical
+{
     background-color:rgb(245,115,243);
- }
- figure.nutraceutical
- {
+}
+figure.nutraceutical
+{
     background-color:rgb(245,115,243,0.6);
- }
- .illicit
- {
+}
+.illicit
+{
     background-color:rgb(255,5,47);
- }
- figure.illicit
- {
+}
+figure.illicit
+{
     background-color:rgb(255,5,47,0.6);
- }
- .unknown
- {
+}
+.unknown
+{
     background-color:rgba(96,96,96,.6);
- }
- .drug_list
- {
+}
+.drug_list
+{
     height:200px;
- }
+}
 .modal
 {
     position: absolute;
