@@ -4,6 +4,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js" charset="utf-8"></script>
 <script src="{% static 'drug_search/js/gene_network.js' %}"></script>
 <script src="{% static 'drug_search/js/network.js' %}"></script>
+<link href="{% static 'drug_search/css/gene_network.css' %}" rel="stylesheet" media="screen">
 <link href="{% static 'drug_search/css/network.css' %}" rel="stylesheet" media="screen">
 <title>Gene Network</title>
 {% endblock %}
@@ -89,6 +90,6 @@
 </div>
 {%endverbatim%}
 <script>
-load_graph('{{gene_network}}','{{phenotypes}}','{{mode}}');
+load_graph('{{gene_network}}','{{phenotypes}}','{{mode}}','{{connection}}','{{source}}');
 </script>
 {% endblock %}

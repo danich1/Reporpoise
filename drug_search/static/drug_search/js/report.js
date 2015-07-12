@@ -21,8 +21,13 @@ function rotate(event)
 /*this function loads all the information necessary from the django webserver
 params: gene_list a comma seperated list of gene names
 */
-function load(gene_list)
+function load(gene_list,source)
 {
+    if(source.indexOf("String") != -1)
+    {
+        var link = document.getElementById("network_indirect");
+        link.className="disabled-link";
+    }
     //I love convoluted things
     gene_list = gene_list.replace(/&quot;/g,'\'');
     var app = angular.module('drug_search', []);
@@ -36,7 +41,7 @@ function load(gene_list)
         //open the drug bank webpage based on gene id
         $scope.open_gene = function(link)
         {
-            $window.open("http://www.drugbank.ca/biodb/polypeptides/"+link['uniprot'],"_blank");
+            $window.open("http://www.ensembl.org/Homo_sapiens/Gene/Summary?g="+link['ensembl'],"_blank");
         };
         //set up the parameters to show the table of contents
         $scope.change_table = function(active_gene)
@@ -75,6 +80,7 @@ function load(gene_list)
         $scope.show = function(id)
         {
             $scope.drug = $scope.find_drug(id);
+            $location.url("#"+Object.keys($scope.drug)[0]);
         };
         $scope.find_drug = function(drug_name)
         {
@@ -101,15 +107,29 @@ function load(gene_list)
                 $scope.gene_color_class[gene] = drug_group[gene][0].name;
             }    
         };
-        $scope.form_submit = function(name)
+        $scope.form_submit = function(mode,connection)
         {
-            var form = document.getElementById("networkform");
-            var hiddenField = document.createElement("input");
-            hiddenField.setAttribute("type", "hidden");
-            hiddenField.setAttribute("name", "mode");
-            hiddenField.setAttribute("value", name);
-            form.appendChild(hiddenField);
-            form.submit();
+            //submit only if direct or string is not around
+            if(connection=="Direct" || connection == "Indirect" && source.indexOf("String") == -1)
+            {
+                var form = document.getElementById("networkform");
+                var hiddenField = document.createElement("input");
+                hiddenField.setAttribute("type", "hidden");
+                hiddenField.setAttribute("name", "mode");
+                hiddenField.setAttribute("value", mode);
+                var hiddenField2 = document.createElement("input");
+                hiddenField2.setAttribute("type", "hidden");
+                hiddenField2.setAttribute("name", "source");
+                hiddenField2.setAttribute("value", source);
+                var hiddenField3 = document.createElement("input");
+                hiddenField3.setAttribute("type", "hidden");
+                hiddenField3.setAttribute("name", "connection");
+                hiddenField3.setAttribute("value", connection);
+                form.appendChild(hiddenField);
+                form.appendChild(hiddenField2);
+                form.appendChild(hiddenField3);
+                form.submit();
+            }
         };
         //graph the gene-drug data from django
         $http.get("grab_data",{
@@ -135,6 +155,8 @@ function load(gene_list)
                     params:
                     {
                     "genes":$scope.phenotype_list,
+                    "source":source,
+                    "connection":"Direct",
                     "mode":"mini"
                     }
                 })
@@ -142,7 +164,7 @@ function load(gene_list)
                 {
                     console.log(response);
                     $scope.network_data = response;
-                    draw_network($scope.network_data,455,355,undefined,$scope.drug_group);
+                    draw_network($scope.network_data,455,355,undefined,$scope.drug_group,0);
                     $timeout(function()
                     {
                         $scope.finished=true;

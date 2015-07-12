@@ -1,16 +1,17 @@
-function draw_network(data,height,width,scope,categories)
+function draw_network(data,height,width,scope,categories,width_offset)
 {
-    console.log(scope);
     var index = -1;
-    var width_offset = 100;
-    var offset = 12.5;
+    var offset = 10;
     var offset_space = 25;
-    var link_offset = data["nodes"].length;
+    var midpoint = 0;
+    var link_offset = data["nodes"].length * 2;
+
     //create a force graph layout https://github.com/mbostock/d3/wiki/Force-Layout
     var force = d3.layout.force()
     .nodes(d3.values(data["nodes"]))
     .links(data["links"])
     .size([width,height])
+    //.linkDistance(function(){return Math.max(35,Math.floor((Math.random() * data["nodes"].length * 5)+1))})
     .linkDistance(link_offset)
     .charge(-170)
     .start();
@@ -21,6 +22,46 @@ function draw_network(data,height,width,scope,categories)
     .attr("width",width)
     .attr("height",height)
 
+    //create a legend for the gene network
+    var legend = svg.append("g")
+    .attr("class", "legend")
+    .attr("transform", "translate(" + (width_offset) + "," + 20 + ")");
+
+    legend.append("rect")
+    .attr("id", "legend_border")
+    .attr("width", 150)
+    .attr("height", 100);
+
+    //append the symbols and the names they represent
+    var legend_line = legend.selectAll("line")
+    .data(data.legend.line)
+    .enter().append("line")
+    .attr("class",function(d){return d.type})
+    .attr("x1",3)
+    .attr("y1",function(d,i){return offset+(i*offset_space)})
+    .attr("x2",25)
+    .attr("y2",function(d,i){midpoint=offset+(i*offset_space);return offset+(i*offset_space)});
+
+    var legend_circle_container = legend.selectAll("circle").data(data.legend.circle);
+    var legend_circle_outer = legend_circle_container.enter().append("circle")
+    .attr("r", 10)
+    .attr("cx", 14)
+    .attr("cy",function(d,i){return midpoint+((i+1)*offset_space)})
+    .attr("class", function(d){return "outer " + d.type});
+
+    var legend_circle_inner = legend_circle_container.enter().append("circle")
+    .attr("r", 5)
+    .attr("cx",14)
+    .attr("cy",function(d,i){return midpoint+((i+1)*offset_space)})
+    .attr("class", function(d){if(d.type == "none"){return "inner_" + d.type} else {return "inner"}});
+
+    var legend_text = legend.selectAll('text')
+    .data(d3.merge([data.legend.line,data.legend.circle]))
+    .enter().append('text')
+    .attr("x",50)
+    .attr("y",function(d,i) {return offset+((i*offset_space)+4)})
+    .text(function(d){return d.data});
+
     //create the paths using the force links
     var path = svg.append("g").selectAll(".link")
     .data(force.links())
@@ -30,11 +71,11 @@ function draw_network(data,height,width,scope,categories)
     var circle_container = svg.append("g").attr("id","graph_nodes").selectAll("circle").data(force.nodes());
     var circle2 = circle_container.enter().append("circle")
     .attr("r",10)
-    .attr("class", "outer");
+    .attr("class", function(d){return "outer " + d.type});
     //create the circle nodes using the force.nodes data
     var circle = circle_container.enter().append("circle")
-    .attr("r",7.5)
-    .attr("class", function(d) { return d.type})
+    .attr("r",5)
+    .attr("class", function(d){if (d.type == "none") {return "inner_none"} else {return "inner"}})
     .attr("ng-href", "#myModal")
     .on("dblclick", function(d,i)
     {
@@ -56,57 +97,22 @@ function draw_network(data,height,width,scope,categories)
     var text = svg.append("g").selectAll("text")
     .data(force.nodes())
     .enter().append("text")
-    .attr("x", 8)
+    .attr("x", 10)
     .attr("y", ".31em")
-    .attr("class", function(d){return d.type})
+    .attr("class", "text")
     .text(function(d){ return d.name;});
 
-// apply the physics simulation on the gene network graph
-force.on("tick", function()
-{
-    path.attr("x1", function(d) { return d.source.x; })
-    .attr("y1", function(d) { return d.source.y; })
-    .attr("x2", function(d) { return d.target.x; })
-    .attr("y2", function(d) { return d.target.y; });
-    circle.attr("transform", transform);
-    circle2.attr("transform", transform);
-    text.attr("transform", transform);
-});
-
-//create a legend for the gene network
-var legend = svg.append("g")
-.attr("class", "legend")
-.attr("transform", "translate(" + (width_offset) + "," + 20 + ")");
-
-legend.append("rect")
-.attr("id", "legend_border")
-.attr("width", 150)
-.attr("height", 100);
-
-//append the symbols and the names they represent
-var legend_line = legend.selectAll("line")
-.data(data.legend.line)
-.enter().append("line")
-.attr("class",function(d){return d.type})
-.attr("x1",3)
-.attr("y1",function(d,i){return offset+(i*offset_space)})
-.attr("x2",25)
-.attr("y2",function(d,i){return offset+(i*offset_space)});
-
-var legend_circle = legend.selectAll("circle")
-.data(data.legend.circle)
-.enter().append("circle")
-.attr("r", 7.5)
-.attr("cx", 12.5)
-.attr("cy",function(d,i){return (offset*3)+((i+1)*offset_space)})
-.attr("class", function(d){return d.type});
-
-var legend_text = legend.selectAll('text')
-.data(d3.merge([data.legend.line,data.legend.circle]))
-.enter().append('text')
-.attr("x",50)
-.attr("y",function(d,i) {return offset+((i*offset_space)+4)})
-.text(function(d){return d.data});
+    // apply the physics simulation on the gene network graph
+    force.on("tick", function()
+    {
+        path.attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+        circle.attr("transform", transform);
+        circle2.attr("transform", transform);
+        text.attr("transform", transform);
+    });
 }
 /* translate the groupped elements to a given position*/
 function transform(d) {

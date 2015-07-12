@@ -3,7 +3,7 @@
 {% block headlink %} 
 <link href="{% static 'drug_search/css/carousel.css' %}" rel="stylesheet" media="screen">
 <link href="{% static 'drug_search/css/report.css' %}" rel="stylesheet" media="screen">
-<link href="{% static 'drug_search/css/network.css' %}" rel="stylesheet" media="screen">
+<link href="{% static 'drug_search/css/gene_network.css' %}" rel="stylesheet" media="screen">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js" charset="utf-8"></script>
 <script src="{% static 'drug_search/js/d3-cloud-1.0.5/d3.layout.cloud.js'%}"></script>
 <script src="{% static 'drug_search/js/gene_network.js' %}"></script>
@@ -48,9 +48,15 @@
                         {% csrf_token %}
                         <input id="gene_network_name" name="gene_name" type="hidden" value="" />
                         {%verbatim%}<input id="gene_phenotypes" name="phenotypes" type="hidden" value="{{phenotype_list}}"/>
-                        <button type="button" class="btn btn-info dropdown-toggle" role="group" ng-click="form_submit('full')">
-                            View Full Network!
-                        </button>
+                        <div class="dropdown">
+                        <button type="button" class="btn btn-info dropdown-toggle" data-toggle="dropdown">
+                            View Full Network! <span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a href="#" id="network_direct" ng-click="form_submit('full','Direct')">Direct</a></li>
+                                <li><a href="#" id="network_indirect" ng-click="form_submit('full','Indirect')">Indirect</a></li>
+                            </ul>
+                    </div>
                         {%endverbatim%}
                     </form>
                 </div>
@@ -151,7 +157,7 @@
             </section>
             {% endverbatim %}
             <script>
-            load('{{genes}}');
+            load('{{genes}}','{{source}}');
             </script>
             <style ng-repeat="gene in data_keys"> 
             #carousel figure:nth-child({% verbatim %}{{$index+1}}{% endverbatim %}){transform: rotateY({% verbatim %}{{360/data_keys.length*$index}}{% endverbatim %}deg)translateZ({{translate}}px);}

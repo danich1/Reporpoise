@@ -1,25 +1,53 @@
 {% extends "drug_search/drug_base.html" %}
 {% load staticfiles %}
 {%block headlink %}
-    <link href="{% static 'drug_search/css/form.css' %}" rel="stylesheet" media="screen">
-    <script src="{% static 'drug_search/js/form.js' %}"></script>
-    <title>Repurpose</title>
+<link href="{% static 'drug_search/css/form.css' %}" rel="stylesheet" media="screen">
+<script src="{% static 'drug_search/js/form.js' %}"></script>
+<title>Reporpoise</title>
 {% endblock %}
 {% block body_content %}
-    <div class="container">
-        <div class="jumbotron">
-            <h1> Gene Search </h1>
-            <p> This is where you enter a list of gene names.</p>
-            <p> The acceptable formats are <a href="https://en.wikipedia.org/wiki/Comma-separated_values">Comma Seperated Values</a> (CSV) or <a href="https://en.wikipedia.org/wiki/Tab-separated_values">Tab Seperated Values</a> (TSV).</p>
-            <p> Column Headers are: Gene Name,Phenotypic Label,Z-Score,Label2,Z-Score2 etc.</p>
+<div class="alert alert-danger fade in">
+<a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+<h3><strong> Warning!! </strong> <span id="message"></span></h3>
+</div>
+<div class="container">
+    <div class="page-header">
+        <h1> Gene Search </h1>
+    </div>
+    <form action="search" method="post" id="genes" enctype="multipart/form-data" role="form" class="form-horizontal">
+        {% csrf_token %}
+        <div class="form-group">
+            <label class="control-label col-sm-1 col-md-1 col-lg-1">
+               Genes 
+                <a href="#" style="color:black;" data-toggle="popover" title="Help Tool" data-content="Insert gene names here or upload a file!! File format is <a href='https://en.wikipedia.org/wiki/Comma-separated_values' target='_blank'>CSV</a> or <a href='https://en.wikipedia.org/wiki/Tab-separated_values' target='_blank'>TSV</a>!!" data-html="true">
+                    <span class="glyphicon glyphicon-question-sign">
+                    </span>
+                </a>
+           </label>
+           <div class="col-sm-11 col-md-11 col-lg-11">
+                <textarea form="genes" col="5" row="10" name="gene_name" class="form-control" onblur="onBlur(this)" onFocus="onFocus(this)" id="gene_text">Format: Gene Name,Phenotype Label,Z-Score,Phenotype Label2,Z-Score2 etc...</textarea>
+                <input type="file" name="file_upload" id="fileToUpload"/>
+            </div>
         </div>
-    </div>
-    <div class="form-group">
-        <form action="search" method="post" id="genes" enctype="multipart/form-data">
-            {% csrf_token %}
-            <textarea style="resize:none" form="genes" col="20" row="30" name="gene_name" class="form-control" onblur="onBlur(this)" onFocus="onFocus(this)" id="gene_text"> Enter Gene List Here or Insert a File Below...</textarea>
-            <input type="file" name="file_upload" id="fileToUpload"/>
-            <input type="submit" value="Search" name="Search" class="btn btn-info"/>
-        </form>
-    </div>
+        <div class="form-group">
+            <label class="control-label col-sm-1 col-md-1 col-lg-1">
+                Source
+                <a href="#" style="color:black;" data-toggle="popover" title="Help Tool" data-content="Select the source for protein-protein interactions!! We have {{Dapple|add:String}} interactions in our database!!" data-html="true">
+                    <span class="glyphicon glyphicon-question-sign">
+                    </span>
+                </a>
+            </label>
+            <div class="col-sm-11 col-md-11 col-lg-11"> 
+                <input type="checkbox" name="source" value="Dapple" class="sourcecheck"> Dapple (Interactions: {{Dapple}})<br>
+                <input type="checkbox" name="source" value="String" class="sourcecheck"> String (Interactions: {{String}})<br>
+            </div>
+        </div>
+        <button id="submit" class="btn btn-primary">
+            <span class="glyphicon glyphicon-search"></span> Search
+        </button>
+    </form>
+</div>
+<script>
+init()
+</script>
 {% endblock %}
