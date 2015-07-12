@@ -10,7 +10,7 @@ def test(request):
 
 #This is the initial method that gets called to show the homepages
 def initialize(request):
-    return render(request, 'drug_search/gene_select.html')
+    return render(request, 'drug_search/gene_select.html', {"Dapple":len(Interactions.objects.filter(source="Dapple")), "String":len(Interactions.objects.filter(source="String"))})
 
 #This will render the reference page
 def reference(request):
@@ -22,7 +22,9 @@ def network(request):
         gene_name = request.POST.get("gene_name","")
         phenotypes = request.POST.get("phenotypes","")
         mode = request.POST.get("mode","")
-    return render(request,'drug_search/network.html',{"gene_network":json.dumps({gene_name:""}),"phenotypes":phenotypes,"mode":mode})
+        source = request.POST.get("source", "")
+        connection = request.POST.get("connection", "")
+    return render(request,'drug_search/network.html',{"gene_network":json.dumps({gene_name:""}),"phenotypes":phenotypes,"mode":mode,"connection":connection,"source":source})
 
 # This method will parse the file or a gene list in order to render the gene wagon page correctly
 def search(request):
@@ -45,7 +47,7 @@ def search(request):
                     for index in range(len(gene_obj)-1):
                         gene_dict[gene_name].append((gene_obj[index],float(gene_obj[index+1])))
         translate = int(round(105/math.tan(math.pi/len(gene_dict)))) if len(gene_dict) > 2 else 180 if len(gene_dict) == 2 else 0
-        return render(request, 'drug_search/report.html', {"genes":json.dumps(gene_dict),"translate":translate})
+        return render(request, 'drug_search/report.html', {"genes":json.dumps(gene_dict),"translate":translate,"source":",".join(request.POST.getlist("source"))})
     raise Http404("Invalid Request Please Try Again!")
 
 #This method returns drug json data based on a given gene list
@@ -119,9 +121,9 @@ def networktize(request):
         mode = request.GET['mode']
         gene_list = dict(ast.literal_eval(request.GET['genes'])).keys()
         #need interaction source
-        source = request.GET['source']
+        source = request.GET['source'].split(",")
         #if the user wants indirect connections as well
-        indirect = request.GET['connection'] == 'indirect'
+        indirect = request.GET['connection'] == 'Indirect'
         #this is the json data that gets passed into the d3 network ex {"Nodes":[{}],"links":[{}]}
         network_graph = {"nodes":[],"links":[]}
         #keep track of each gene interaction
@@ -130,7 +132,7 @@ def networktize(request):
         #keep track of the gene groups approved, drugable, etc 
         gene_group = set({})
         for gene_name in gene_list:
-            interactions = Interactions.objects.filter((Q(gene_source=gene_name)|Q(gene_target=gene_name))&Q(source__in=["Dapple"]))
+            interactions = Interactions.objects.filter((Q(gene_source=gene_name)|Q(gene_target=gene_name))&Q(source__in=source))
             for interaction in interactions:
                 case = "direct"
                 if mode=="mini":
@@ -177,10 +179,10 @@ def networktize(request):
                             network_graph["nodes"].append({"name":interaction.gene_target.gene_name,"url":"drug_search/search","type": interaction.gene_target.category.all()[0].name if len(interaction.gene_target.category.all())>0 else "none"})
                             gene_group.add(interaction.gene_target.category.all()[0].name if len(interaction.gene_target.category.all())>0 else "none")
                         network_graph["links"].append({"source":interaction_indicies[interaction.gene_source.gene_name],"target":interaction_indicies[interaction.gene_target.gene_name],"type":case})
-                        #if indirect:
-                        #    other_interactions = Interactions.objects.filter((Q(gene_source=interaction.gene_target.gene_name)&Q(gene_target__in=filter(lambda x:x != "count" and x != interaction.gene_source.gene_name,interaction_indicies.keys()))|Q(gene_target=interaction.gene_target.gene_name)&Q(gene_source__in=filter(lambda x:x != "count" and x != interaction.gene_source.gene_name,interaction_indicies.keys())))&Q(source__in=["Dapple"]))
-                        #    for other_interaction in other_interactions:
-                        #        network_graph["links"].append({"source":interaction_indicies[other_interaction.gene_source.gene_name],"target":interaction_indicies[other_interaction.gene_target.gene_name],"type":"indirect"})
+                        if indirect:
+                            other_interactions = Interactions.objects.filter((Q(gene_source=interaction.gene_target.gene_name)&Q(gene_target__in=filter(lambda x:x != "count" and x != interaction.gene_source.gene_name,interaction_indicies.keys()))|Q(gene_target=interaction.gene_target.gene_name)&Q(gene_source__in=filter(lambda x:x != "count" and x != interaction.gene_source.gene_name,interaction_indicies.keys())))&Q(source__in=["Dapple"]))
+                            for other_interaction in other_interactions:
+                                network_graph["links"].append({"source":interaction_indicies[other_interaction.gene_source.gene_name],"target":interaction_indicies[other_interaction.gene_target.gene_name],"type":"indirect"})
                     else:
                         #if the gene has not been seen then add it to the full network and add the node into the full network node list
                         if interaction.gene_target.gene_name not in interaction_indicies:
@@ -194,10 +196,10 @@ def networktize(request):
                             network_graph["nodes"].append({"name":interaction.gene_source.gene_name,"url":"drug_search/search","type": interaction.gene_source.category.all()[0].name if len(interaction.gene_source.category.all())>0 else "none"})
                             gene_group.add(interaction.gene_source.category.all()[0].name if len(interaction.gene_source.category.all())>0 else "none")
                         network_graph["links"].append({"source":interaction_indicies[interaction.gene_target.gene_name],"target":interaction_indicies[interaction.gene_source.gene_name],"type":case})
-                        #if indirect:
-                        #    other_interactions = Interactions.objects.filter((Q(gene_source=interaction.gene_source.gene_name)&Q(gene_target__in=filter(lambda x:x != "count" and x != interaction.gene_target.gene_name,interaction_indicies.keys()))|Q(gene_target=interaction.gene_source.gene_name)&Q(gene_source__in=filter(lambda x:x != "count" and x != interaction.gene_target.gene_name,interaction_indicies.keys())))&Q(source__in=["Dapple"]))
-                        #    for other_interaction in other_interactions:
-                        #        network_graph["links"].append({"source":interaction_indicies[other_interaction.gene_source.gene_name],"target":interaction_indicies[other_interaction.gene_target.gene_name],"type":"indirect"})
+                        if indirect:
+                            other_interactions = Interactions.objects.filter((Q(gene_source=interaction.gene_source.gene_name)&Q(gene_target__in=filter(lambda x:x != "count" and x != interaction.gene_target.gene_name,interaction_indicies.keys()))|Q(gene_target=interaction.gene_source.gene_name)&Q(gene_source__in=filter(lambda x:x != "count" and x != interaction.gene_target.gene_name,interaction_indicies.keys())))&Q(source__in=["Dapple"]))
+                            for other_interaction in other_interactions:
+                                network_graph["links"].append({"source":interaction_indicies[other_interaction.gene_source.gene_name],"target":interaction_indicies[other_interaction.gene_target.gene_name],"type":"indirect"})
         if mode == 'mini':
             network_graph.update({"legend":{"line":[{"data":"Direct","type":"direct"}, {"data":"Indirect","type":"indirect"}],"circle":[]}})
             network_graph["legend"]["circle"] = [{"data":group.capitalize(), "type":group} for group in gene_group]

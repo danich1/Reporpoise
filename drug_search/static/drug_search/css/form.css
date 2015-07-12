@@ -1,11 +1,10 @@
-#genes
-{
-    height:200px;
-}
 #gene_text
 {
-    height:150px;
-    /*width:1000px;
-    margin-left:auto;
-    margin-right:auto;*/
+    width:546px;
+    height:243px;
+    resize:none;
+}
+.popover
+{
+    width:250px;
 }

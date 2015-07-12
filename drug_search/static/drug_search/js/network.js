@@ -3,7 +3,7 @@ This function loads the graph data.
 params: data which is the gene_name of a given gene (ex MAPK1)
 returns: calls the draw_network function to use d3 to graph the gene network
 */
-function load_graph(data,phenotypes,mode)
+function load_graph(data,phenotypes,mode,connection,source)
 {
     // fix the data for a json object
     data = data.replace(/&quot;/g,'\'');
@@ -88,8 +88,13 @@ function load_graph(data,phenotypes,mode)
             hiddenField2.setAttribute("type","hidden");
             hiddenField2.setAttribute("name", "csrfmiddlewaretoken");
             hiddenField2.setAttribute("value", csrftoken);
+            var hiddenField3 = document.createElement("input");
+            hiddenField3.setAttribute("type","hidden");
+            hiddenField3.setAttribute("name", "source");
+            hiddenField3.setAttribute("value", source.split(","));
             form.appendChild(hiddenField);
             form.appendChild(hiddenField2);
+            form.appendChild(hiddenField3);
             document.body.appendChild(form);
             form.submit();
         };
@@ -98,7 +103,9 @@ function load_graph(data,phenotypes,mode)
             params:
             {
                 "mode":mode,
-                "genes":data
+                "genes":data,
+                "connection":connection,
+                "source":source
                 //"user_phenotype_genes":$scope.phenotype_list
             }
         })
@@ -125,7 +132,7 @@ function load_graph(data,phenotypes,mode)
                     var progress = document.getElementById("bar");
                     progress.style="width:66%";
                     progress.textContent="Drawing The Network!!!";
-                    draw_network($scope.graph,600,1280,$scope,response["categories"]);
+                    draw_network($scope.graph,600,1280,$scope,response["categories"],100);
                     $timeout(function()
                     {
                         progress.style="width:100%";
