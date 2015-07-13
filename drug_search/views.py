@@ -10,7 +10,8 @@ def test(request):
 
 #This is the initial method that gets called to show the homepages
 def initialize(request):
-    return render(request, 'drug_search/gene_select.html', {"Dapple":len(Interactions.objects.filter(source="Dapple")), "String":len(Interactions.objects.filter(source="String"))})
+    #return render(request, 'drug_search/gene_select.html', {"Dapple":len(Interactions.objects.filter(source="Dapple")), "String":len(Interactions.objects.filter(source="String"))})
+    return render(request, 'drug_search/gene_select.html', {"Dapple":139738, "String":620720})
 
 #This will render the reference page
 def reference(request):
@@ -201,7 +202,7 @@ def networktize(request):
                             for other_interaction in other_interactions:
                                 network_graph["links"].append({"source":interaction_indicies[other_interaction.gene_source.gene_name],"target":interaction_indicies[other_interaction.gene_target.gene_name],"type":"indirect"})
         if mode == 'mini':
-            network_graph.update({"legend":{"line":[{"data":"Direct","type":"direct"}, {"data":"Indirect","type":"indirect"}],"circle":[]}})
+            network_graph.update({"legend":{"line":[{"data":"Direct","type":"direct"}],"circle":[]}})
             network_graph["legend"]["circle"] = [{"data":group.capitalize(), "type":group} for group in gene_group]
         else:
             if indirect:

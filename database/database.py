@@ -74,7 +74,7 @@ def fill_data_DGIdb(file_name):
     return set([gene[0] for gene in genes])
 
 #@profile
-def fill_data_drug_bank(tree_root, drug_dict,allowed_gene_names):
+def fill_data_drug_bank(tree_root, drug_dict,allowed_gene_names,drug_group_order_map):
     gene_data = []
     gene_group_map = {}
     for drug in tqdm.tqdm(tree_root):
@@ -85,6 +85,8 @@ def fill_data_drug_bank(tree_root, drug_dict,allowed_gene_names):
                 for group_child in child:
                     if "{http://www.drugbank.ca}group" in group_child.tag:
                         drug_dict["groups"].append(group_child.text)
+                if (drug_dict["groups"]) > 1:
+                    sorted(drug_dict["groups"], key=lambda x: drug_group_order_map[x])
             elif "{http://www.drugbank.ca}name" in child.tag:
                 drug_dict["name"] = child.text
             elif "{http://www.drugbank.ca}targets" in child.tag:
@@ -121,10 +123,10 @@ def fill_data_drug_bank(tree_root, drug_dict,allowed_gene_names):
 #@profile
 def main(argv=sys.argv):
     system_options = dict(getopt.getopt(argv[1:], '',['drugbank=', 'inweb=', 'string=', 'dgidb=','output=','masterlist='])[0])
+    drug_group_order_map = {"approved":0, "investigational":1, "experimental":2,"nutraceutical":3,"withdrawn":4,"illicit":5}
     output_str = ""
     total_time = 0
     drugable_genes = set({})
-    gene_tracker = set({})
     interaction_set = {}
     if "--dgidb" in system_options:
         print "Opening the DGIdb file and parsing it....."
@@ -132,7 +134,7 @@ def main(argv=sys.argv):
         drugable_genes = fill_data_DGIdb(system_options["--dgidb"])
         output_str+="{\n\"fields\":{},\n\"model\":\"drug_search.group\",\n\"pk\":\"Drugable\"\n},\n"
         end = time.time()
-        print "Done Time: %.5f" % (end-start)
+        print "Done Time: %.5fs" % (end-start)
         total_time += (end-start)
     if "--masterlist" in system_options:
         print "Opening the Master Gene file and parsing it....."
@@ -140,11 +142,12 @@ def main(argv=sys.argv):
         gene_entries,gene_protein_map = fill_data_master_list(system_options["--masterlist"])
         allowed_gene_names = set(gene_protein_map.values())
         end = time.time()
-        print "Done Time: %.5f" % (end-start)
+        print "Done Time: %.5fs" % (end-start)
         total_time += (end-start)
     if "--drugbank" in system_options:
-        #keep track of each drug group to prevent duplicates
+        drug_bank_str = ""
         group_tracker = set({})
+        #keep track of each drug group to prevent duplicates
         primary_target_id = 1
         print "Opening the Drugbank database in element tree...."
         start = time.time()
@@ -154,31 +157,38 @@ def main(argv=sys.argv):
         print "Finished... Time: %.5fs" % (end-start)
         print "Now parsing the data"
         start = time.time()
-        for drug_dict,gene_group_map in fill_data_drug_bank(tree.getroot(),{"DB_ID":[],"groups":[],"gene":[]},allowed_gene_names):
+        for drug_dict,gene_group_map in fill_data_drug_bank(tree.getroot(),{"DB_ID":[],"groups":[],"gene":[]},allowed_gene_names,drug_group_order_map):
             #write out group json
             for drug_group in drug_dict["groups"]:
                 if drug_group not in group_tracker:
                     output_str+="{\n\"fields\":{},\n\"model\":\"drug_search.group\",\"pk\":\"%s\"\n},\n" % (drug_group)
                     group_tracker.add(drug_group)
+            #possible issue is that the first drug seen would the group or that the last drug would be the group
             for gene in gene_group_map:
-                output_str+="{\n\"fields\":{\n\"category\":[\""+gene_group_map[gene]+"\"],\n\"gene_id\":\"%s\"\n},\n\"model\":\"drug_search.gene\",\n\"pk\":\"%s\"\n},\n" % (gene_entries[gene][0],gene)
-                gene_tracker.add(gene)
+                if len(gene_entries[gene]) < 4:
+                    gene_entries[gene].append(gene_group_map[gene])
+                else:
+                    gene_entries[gene][-1] = gene_entries[gene][-1] if drug_group_order_map[gene_entries[gene][-1]] <= drug_group_order_map[gene_group_map[gene]] else gene_group_map[gene]
             #write out drug json
-            output_str+="{\n\"fields\":{\n\"group\":["+",\n".join(["\""+group+"\"" for group in drug_dict["groups"]])+"]\n},\n\"model\":\"drug_search.drug\",\n\"pk\":\"%s\"\n},\n" % (drug_dict["name"])
+            drug_bank_str+="{\n\"fields\":{\n\"group\":["+",\n".join(["\""+group+"\"" for group in drug_dict["groups"]])+"]\n},\n\"model\":\"drug_search.drug\",\n\"pk\":\"%s\"\n},\n" % (drug_dict["name"])
             #write out drug_id json
             for drugid in drug_dict["DB_ID"]:
-                output_str+="{\n\"fields\":{\n\"name\":\"%s\"\n},\n\"model\":\"drug_search.drugid\",\n\"pk\":\"%s\"\n},\n" % (drug_dict["name"],drugid)
+                drug_bank_str+="{\n\"fields\":{\n\"name\":\"%s\"\n},\n\"model\":\"drug_search.drugid\",\n\"pk\":\"%s\"\n},\n" % (drug_dict["name"],drugid)
             #write out targets json
             for actions, gene in drug_dict["gene"]:
                 for action in actions:
-                    output_str+="{\n\"fields\":{\n\"action\":\"%s\",\n\"gene\":\"%s\",\n\"drug\":\"%s\"\n},\n\"model\":\"drug_search.targets\",\n\"pk\":%d\n},\n" % (action, gene, drug_dict["name"],primary_target_id)
+                    drug_bank_str+="{\n\"fields\":{\n\"action\":\"%s\",\n\"gene\":\"%s\",\n\"drug\":\"%s\"\n},\n\"model\":\"drug_search.targets\",\n\"pk\":%d\n},\n" % (action, gene, drug_dict["name"],primary_target_id)
                     primary_target_id = primary_target_id + 1
         #for the rest of the genes that are not in drugbank 
-        for gene in filter(lambda x: x not in gene_tracker,gene_entries.keys()):
-            if gene in drugable_genes:
+        for gene in tqdm.tqdm(gene_entries.keys()):
+            if len(gene_entries[gene]) == 4:
+                output_str+="{\n\"fields\":{\n\"category\":[\""+gene_entries[gene][-1]+"\"],\n\"gene_id\":\"%s\"\n},\n\"model\":\"drug_search.gene\",\n\"pk\":\"%s\"\n},\n" % (gene_entries[gene][0],gene)
+            elif gene in drugable_genes:
                 output_str+="{\n\"fields\":{\n\"category\":[\"Drugable\"],\n\"gene_id\":\"%s\"\n},\n\"model\":\"drug_search.gene\",\n\"pk\":\"%s\"\n},\n" % (gene_entries[gene][0],gene)
             else:
                 output_str+="{\n\"fields\":{\n\"category\":[],\n\"gene_id\":\"%s\"\n},\n\"model\":\"drug_search.gene\",\n\"pk\":\"%s\"\n},\n" % (gene_entries[gene][0],gene)
+        #because of databases need to add genes first then add the drugs
+        output_str = output_str + drug_bank_str
         end = time.time()
         print "Done Time: %.5fs" % (end-start)
         total_time += (end-start)
@@ -210,23 +220,25 @@ def main(argv=sys.argv):
         start = time.time()
         interaction_set = fill_data_string(system_options["--string"], interaction_set, gene_protein_map, iteration,allowed_gene_names)
         end = time.time()
-        print "Done Time: %.5f" % (end-start)
+        print "Done Time: %.5fs" % (end-start)
         total_time+= (end-start)
     #since interactions can have multiple sources I have to put this block here
     #this takes about 3 hours holy mother of magical words I need to cut some interactions out 
     if "--string" in system_options or "--inweb" in system_options:
+        interaction_str = ""
         print "Parsing the Gene interaction list....."
         start = time.time()
-        for interaction_key,interaction_values in tqdm.tqdm(interaction_set.iteritems()):
+        for interaction_key in tqdm.tqdm(interaction_set):
             gene_source, gene_target = interaction_key.split("_")
-            output_str+="{\n\"fields\":\n{\n\"source\":[" + ",".join(["\""+ source_str + "\"" for source_str in interaction_values["source"]]) + "],\n\"gene_source\":\"%s\",\n\"gene_target\":\"%s\"\n},\n\"model\":\"drug_search.interactions\",\n\"pk\":%d\n},\n" % (gene_source, gene_target,interaction_values["pk"])
+            interaction_str+="{\n\"fields\":\n{\n\"source\":[" + ",".join(["\""+ source_str + "\"" for source_str in interaction_set[interaction_key]["source"]]) + "],\n\"gene_source\":\"%s\",\n\"gene_target\":\"%s\"\n},\n\"model\":\"drug_search.interactions\",\n\"pk\":%d\n},\n" % (gene_source, gene_target,interaction_set[interaction_key]["pk"])
+        output_str = output_str + interaction_str
         end = time.time()
-        print "Done Time: %.5f" % (end-start)
+        print "Done Time: %.5fs" % (end-start)
         total_time+=(end-start)
     if "--output" in system_options:
         file_obj = codecs.open(system_options["--output"], "w",encoding="utf8")
     else:
-        file_obj = codecs.open("repurpose_data.json", "w",encoding="utf8")
+        file_obj = codecs.open("reporpoise_data.json", "w",encoding="utf8")
     print "Writting Everything to file...."
     start = time.time()
     #begin the json option with a square open bracket

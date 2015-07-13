@@ -1,18 +1,18 @@
-function draw_network(data,height,width,scope,categories,width_offset)
+function draw_network(data,height,width,scope,categories,user_height,legend_offset,distances,layers)
 {
     var index = -1;
     var offset = 10;
     var offset_space = 25;
     var midpoint = 0;
-    var link_offset = data["nodes"].length * 2;
-
+    var link_offset = 280;
+    
     //create a force graph layout https://github.com/mbostock/d3/wiki/Force-Layout
     var force = d3.layout.force()
     .nodes(d3.values(data["nodes"]))
     .links(data["links"])
     .size([width,height])
-    //.linkDistance(function(){return Math.max(35,Math.floor((Math.random() * data["nodes"].length * 5)+1))})
-    .linkDistance(link_offset)
+    //Try and keep the layers in place
+    .linkDistance(function(link, index){return distances[index % layers]})
     .charge(-170)
     .start();
 
@@ -25,12 +25,12 @@ function draw_network(data,height,width,scope,categories,width_offset)
     //create a legend for the gene network
     var legend = svg.append("g")
     .attr("class", "legend")
-    .attr("transform", "translate(" + (width_offset) + "," + 20 + ")");
+    .attr("transform", "translate(" + (legend_offset) + "," + 20 + ")");
 
     legend.append("rect")
     .attr("id", "legend_border")
     .attr("width", 150)
-    .attr("height", 100);
+    .attr("height", user_height);
 
     //append the symbols and the names they represent
     var legend_line = legend.selectAll("line")
