@@ -132,7 +132,8 @@ function load_graph(data,phenotypes,mode,connection,source)
                     var progress = document.getElementById("bar");
                     progress.style="width:66%";
                     progress.textContent="Drawing The Network!!!";
-                    draw_network($scope.graph,600,1280,$scope,response["categories"],100);
+                    var height = ($scope.graph["legend"]["line"].length + $scope.graph["legend"]["circle"].length) * 25;
+                    draw_network($scope.graph,600,1280,$scope,response["categories"],height,100,[100,150,200,250],4);
                     $timeout(function()
                     {
                         progress.style="width:100%";

@@ -164,7 +164,8 @@ function load(gene_list,source)
                 {
                     console.log(response);
                     $scope.network_data = response;
-                    draw_network($scope.network_data,455,355,undefined,$scope.drug_group,0);
+                    var height = (response["legend"]["line"].length + response["legend"]["circle"].length) * 25;
+                    draw_network($scope.network_data,455,355,undefined,$scope.drug_group,height,3,[30],1);
                     $timeout(function()
                     {
                         $scope.finished=true;

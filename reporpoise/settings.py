@@ -19,13 +19,14 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.8/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '6wclxc(w3b!dgwcp+5npf+^u50k0im812ydth)^=rkslo@%ss#'
+# SECURITY WARNING: keep the secret key used in production secret! (I did :)
+with open("secret_key.txt", "r") as f:
+    SECRET_KEY = f.read()
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['coruscant.itmat.upenn.edu']
 
 
 # Application definition
@@ -69,6 +70,32 @@ TEMPLATES = [
         },
     },
 ]
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s'
+        },
+    },
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': 'Logs/Repurpoise.log',
+        },
+    },
+    'loggers': {
+        'django.request': {
+            'handlers': ['file'],
+            'level': 'INFO',
+            'propagate': True,
+            'formatter':'verbose'
+        },
+    },
+}
+
 
 WSGI_APPLICATION = 'reporpoise.wsgi.application'
 
