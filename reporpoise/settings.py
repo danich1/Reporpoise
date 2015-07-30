@@ -24,7 +24,7 @@ with open("secret_key.txt", "r") as f:
     SECRET_KEY = f.read()
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+TEMPLATE_DEBUG = DEBUG = True
 
 ALLOWED_HOSTS = ['coruscant.itmat.upenn.edu']
 

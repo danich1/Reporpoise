@@ -8,6 +8,9 @@ import re, math, json,pickle,ast
 def test(request):
     return render(request, 'drug_search/test.html')
 
+def gene_table(request):
+    return render(request, 'drug_search/gene_association.html')
+
 #This is the initial method that gets called to show the homepages
 def initialize(request):
     #return render(request, 'drug_search/gene_select.html', {"Dapple":len(Interactions.objects.filter(source="Dapple")), "String":len(Interactions.objects.filter(source="String"))})
@@ -40,6 +43,9 @@ def search(request):
             gene_obj = gene_obj.split(",")
             gene_name = gene_obj.pop(0)
             if gene_name != '':
+                #using ensemble gene ids
+                if "ENSG" in gene_name:
+                    gene_name = Gene.objects.filter(gene_id__iexact=gene_name)[0].gene_name
                 gene_dict.update({gene_name:[]})
                 if len(gene_obj) > 0:
                     # if the user forgets to input a z-score for a trait. 
@@ -72,7 +78,7 @@ def grab_data(request):
         target = {}
         categories = {}
         drug_group_dict = {}
-        #created a dictionary of drug objects based on a gene name matched within the targets table
+        #created a dictionary of drug objects based on a gene name or ensembl gene id matched within the targets table
         drug_list = {gene_name: Drug.objects.filter(targets__gene__gene_name__iexact=gene_name).distinct() for gene_name in gene_list}
         #for each key in the drug_list dictionary 
         for key in drug_list:
@@ -120,6 +126,7 @@ def networktize(request):
         index = 0
         #get parameters
         mode = request.GET['mode']
+        #print request.GET['genes']
         gene_list = dict(ast.literal_eval(request.GET['genes'])).keys()
         #need interaction source
         source = request.GET['source'].split(",")
@@ -170,6 +177,7 @@ def networktize(request):
                     if interaction.gene_source.gene_name in gene_list:
                         #if the gene has not been seen then add it to the full network and add the node into the full network node list
                         if interaction.gene_source.gene_name not in interaction_indicies:
+                            total_genes.update({interaction.gene_source.gene_name:""})
                             interaction_indicies.update({interaction.gene_source.gene_name:0,"count":1})
                             network_graph["nodes"].append({"name":interaction.gene_source.gene_name,"url":"drug_search/search","type": interaction.gene_source.category.all()[0].name if len(interaction.gene_source.category.all())>0 else "none"})
                             gene_group.add(interaction.gene_target.category.all()[0].name if len(interaction.gene_target.category.all())>0 else "none")
@@ -187,6 +195,7 @@ def networktize(request):
                     else:
                         #if the gene has not been seen then add it to the full network and add the node into the full network node list
                         if interaction.gene_target.gene_name not in interaction_indicies:
+                            total_genes.update({interaction.gene_target.gene_name:""})
                             interaction_indicies.update({interaction.gene_target.gene_name:0,"count":1})
                             network_graph["nodes"].append({"name":interaction.gene_target.gene_name,"url":"drug_search/search","type": interaction.gene_target.category.all()[0].name if len(interaction.gene_target.category.all())>0 else "none"})
                             gene_group.add(interaction.gene_target.category.all()[0].name if len(interaction.gene_target.category.all())>0 else "none")

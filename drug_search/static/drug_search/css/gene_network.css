@@ -61,7 +61,7 @@
 .indirect
 {
     stroke:rgb(138,43,226);
-    stroke-opacity:.45;
+    stroke-opacity:.30;
 }
 /*This targets the legend id (node)*/
 #legend_border

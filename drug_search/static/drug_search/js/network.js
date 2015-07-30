@@ -18,6 +18,11 @@ function load_graph(data,phenotypes,mode,connection,source)
         $scope.switch_case = false;
         $scope.class_label = "";
         $scope.finished = false;
+        $scope.mode = ""
+        $scope.setmode=function(mode_name)
+        {
+            logmode(mode_name);
+        };
         $scope.get_key = function(drug)
         {
             return Object.keys(drug)[0];
@@ -114,6 +119,7 @@ function load_graph(data,phenotypes,mode,connection,source)
             function(response) 
             {
                 $scope.graph = response;
+                console.log($scope.graph);
                 $http.get("grab_data",{
                     params:
                     {

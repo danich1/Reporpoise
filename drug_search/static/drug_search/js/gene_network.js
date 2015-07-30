@@ -1,3 +1,52 @@
+var mode="";
+//says if two indicies are neighbors
+function is_neighbors(a,b,linkedByIndex)
+{
+    return a==b || typeof(linkedByIndex[a + "," + b]) != "undefined";
+}
+/* translate the groupped elements to a given position*/
+function transform(d) 
+{
+  return "translate(" + d.x + "," + d.y + ")";
+}
+function logmode(mode_name)
+{
+    console.log(mode_name);
+    mode = mode_name;
+    console.log(mode);
+}
+//
+function highlightNodes(outer_circle,inner_circle,text,links,node,linkedByIndex,toggle)
+{
+    //parent = all the nodes
+    //text = all the texts
+    if (toggle==0)
+    {
+        outer_circle.classed("nohighlight", function(d,i)
+        {
+            return is_neighbors(node.index,i,linkedByIndex) || is_neighbors(i,node.index,linkedByIndex) ? false : true;
+        });
+        inner_circle.classed("nohighlight", function(d,i)
+        {
+            return is_neighbors(node.index,i,linkedByIndex) || is_neighbors(i,node.index,linkedByIndex) ? false : true;
+        });
+        text.classed("nohighlight", function(d,i)
+        {
+            return is_neighbors(node.index,i,linkedByIndex) || is_neighbors(i,node.index,linkedByIndex) ? false : true;
+        });
+        links.classed("nohighlight", function(d,i)
+        {
+            return node.index != d.source.index && node.index != d.target.index;
+        });
+    }
+    else
+    {
+       outer_circle.classed("nohighlight", false);
+       inner_circle.classed("nohighlight", false);
+       text.classed("nohighlight", false);
+       links.classed("nohighlight", false);
+    }
+}
 function draw_network(data,height,width,scope,categories,user_height,legend_offset,distances,layers)
 {
     var index = -1;
@@ -5,6 +54,8 @@ function draw_network(data,height,width,scope,categories,user_height,legend_offs
     var offset_space = 25;
     var midpoint = 0;
     var link_offset = 280;
+    var linkedByIndex={};
+    var toggle = 0;
     
     //create a force graph layout https://github.com/mbostock/d3/wiki/Force-Layout
     var force = d3.layout.force()
@@ -15,6 +66,12 @@ function draw_network(data,height,width,scope,categories,user_height,legend_offs
     .linkDistance(function(link, index){return distances[index % layers]})
     .charge(-170)
     .start();
+
+    //build a link map for the highlight portion
+    force.links().forEach(function(d)
+    {
+        linkedByIndex[d.source.index + "," + d.target.index] = true;
+    });
 
     //create an svg object by selecting the tag that has the gene_network id 
     var svg = d3.select("#gene_network")
@@ -71,27 +128,55 @@ function draw_network(data,height,width,scope,categories,user_height,legend_offs
     var circle_container = svg.append("g").attr("id","graph_nodes").selectAll("circle").data(force.nodes());
     var circle2 = circle_container.enter().append("circle")
     .attr("r",10)
-    .attr("class", function(d){return "outer " + d.type});
+    .attr("class", function(d){return "outer " + d.type})
+    .on("dblclick", function(d)
+    {
+        console.log(mode);
+        if (typeof(scope) != 'undefined')
+        {
+            if(mode == 'highlight')
+            {
+                toggle = toggle > 0 ? 0 : 1;
+                highlightNodes(circle,circle2,text,path,d,linkedByIndex,toggle);
+            }
+            else if(mode=='profile')
+            {
+                console.log(d);
+                scope.switch_case = true;
+                scope.drug_list = scope.drug_data[d.name];
+                scope.gene_name = d.name;
+                scope.$apply();
+            }
+        }
+    });
     //create the circle nodes using the force.nodes data
     var circle = circle_container.enter().append("circle")
     .attr("r",5)
     .attr("class", function(d){if (d.type == "none") {return "inner_none"} else {return "inner"}})
     .attr("ng-href", "#myModal")
-    .on("dblclick", function(d,i)
+    .on("dblclick", function(d)
     {
+        console.log(mode);
         if (typeof(scope) != 'undefined')
         {
-            console.log(scope.switch_case);
-            //console.log(d);
-            scope.switch_case = true;
-            scope.drug_list = scope.drug_data[d.name];
-            scope.gene_name = d.name;
-            scope.$apply();
+            if(mode == 'highlight')
+            {
+                toggle = toggle > 0 ? 0 : 1;
+                highlightNodes(circle,circle2,text,path,d,linkedByIndex,toggle);
+            }
+            else if(mode=='profile')
+            {
+                console.log(d);
+                scope.switch_case = true;
+                scope.drug_list = scope.drug_data[d.name];
+                scope.gene_name = d.name;
+                scope.$apply();
+            }
         }
     })
     circle_container.call(force.drag);
     //append a title to each node
-    circle.append("title").text(function(d){return d.name});
+    circle2.append("title").text(function(d){return d.name});
 
     //append text to each gene node to show the name of each gene
     var text = svg.append("g").selectAll("text")
@@ -113,8 +198,4 @@ function draw_network(data,height,width,scope,categories,user_height,legend_offs
         circle2.attr("transform", transform);
         text.attr("transform", transform);
     });
-}
-/* translate the groupped elements to a given position*/
-function transform(d) {
-  return "translate(" + d.x + "," + d.y + ")";
 }
