@@ -98,8 +98,9 @@ def grab_data(request):
                         target[tar.gene.gene_name]["categories"].append(tar.action)
                     else:
                         target.update({tar.gene.gene_name:{"categories":[tar.action],"ensembl":tar.gene.gene_id}})
+                words = {word.label:word.count for word in Word.objects.filter(drug=drug.name)}
                 #Create the drug object and place it into drugs dictionary {"ATM":{"Caffeine":{"group":["approved"],"DrugID":["DB00201"."APRD00673"],"Targets":[{"F2":{"categories":["inducer"],"uniprot":"P00734"}}]}}}
-                drugs[key].append({drug.name:{"group":[group.name for group in drug.group.all()],"DrugID":[drugID.drug_id for drugID in drug.drugid_set.all()],"Targets":target}})
+                drugs[key].append({drug.name:{"group":[group.name for group in drug.group.all()],"DrugID":[drugID.drug_id for drugID in drug.drugid_set.all()],"Targets":target,"Words":words}})
                 target={}
             #a dictionary to manually order the group options
             drug_group_order_map = {"approved":0, "investigational":1, "experimental":2,"nutraceutical":3,"withdrawn":4,"illicit":5}

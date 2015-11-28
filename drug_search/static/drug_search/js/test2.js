@@ -91,7 +91,7 @@ function load(data)
         .attr("x", function(d){return xScale(d.x);})
         .attr("y", function(d){return yScale(d.y);});
 
-    svg.selectAll(".dotline")
+    /*svg.selectAll(".dotline")
     .data(data)
     .enter().append("line")
     .attr("class", function(d){if (d.y <= GWAS) {return "dotline"} else {return "dotline insig"}})
@@ -100,7 +100,7 @@ function load(data)
     .attr("x2", function(d){return xScale(d.x);})
     .attr("y2", function(d){return yScale(d.y);})
     .attr("stroke", "black")
-    .attr("stroke-width", 2);
+    .attr("stroke-width", 2);*/
 
     svg.append("line")
     .attr("class", "GWAS")

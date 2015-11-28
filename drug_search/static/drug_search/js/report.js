@@ -218,21 +218,40 @@ function generate_cloud(drug_data, gene_name)
     var word_cloud = document.getElementById("word_cloud");
     word_cloud.innerHTML="";
     var width = word_cloud.clientWidth;
-    var height = 355
+    var height = 355;
+    var drug_words = [];
+    var already_seen = [];
+    big_size = 90;
+    for (drug in drug_data[gene_name])
+    {
+        for (drug_name in drug_data[gene_name][drug])
+        {
+            drug_keys = Object.keys(drug_data[gene_name][drug][drug_name]["Words"]);
+            for (key in drug_keys)
+            {
+                if(already_seen.indexOf(drug_keys[key]) == -1)
+                {
+                    already_seen.push(drug_keys[key]);
+                    var word_size = drug_data[gene_name][drug][drug_name]["Words"][drug_keys[key]] > 100 ? 90 : drug_data[gene_name][drug][drug_name]["Words"][drug_keys[key]];
+                    word_size = word_size < 20 ? 20 : word_size;
+                    drug_words.push({text:String(drug_keys[key]),size:word_size});
+                }
+            }
+        }
+    }
+    console.log(drug_words);
     //Have to figure out height later
     d3.layout.cloud().size([width,height])
-    .words([
-        "Hello", "world", "normally", "you", "want", "more", "words",
-        "than", "this"].map(function(d) {
-        return {text: d, size: 10 + Math.random() * 90};
-      }))
+    .words(drug_words)
     .rotate(function(word){return ~~(Math.random() * 2) * 90;})
     .fontSize(function(d) { return d.size; })
+    .spiral("rectangular")
     .on("end", draw)
     .start()
 }
 function draw(words)
 {
+    console.log(words);
     var fill = d3.scale.category20();
     d3.select("#word_cloud").append("svg")
     .attr("width", 488)

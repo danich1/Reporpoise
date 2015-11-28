@@ -1,80 +1,26 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Aug  9 15:59:03 2015
+
+@author: Dave
+"""
+import pandas as pd
+import nltk
 import xml.etree.cElementTree as ET
-import sys 
-import getopt
-import time
 import codecs
+import HTMLParser
+import re
 import tqdm
-#dependencies (Need drugbank.xml, InWeb3_HC_NonRed.txt, IWtoHugo, need string human data files)
-#I discovered the beauty of json :D
-def fill_data_master_list(file_name):
-    gene_protein_map = {}
-    with open(file_name, "r") as f:
-        header = f.readline().strip().split(",")
-        header_map = {header_field:index for header_field,index in zip(header,range(len(header)))}
-        gene_entries = [line.strip().split(",") for line in f]
-        #filter out the non coding transcripts
-        gene_entries = filter(lambda x: x[2] != "", gene_entries)
-        #create a gene protein id mapping
-        for gene_entry in gene_entries:
-            if gene_entry[header_map["Associated Gene Name"]] not in gene_protein_map:
-                gene_protein_map.update({gene_entry[header_map["Ensembl Protein ID"]]:""})
-            gene_protein_map[gene_entry[header_map["Ensembl Protein ID"]]] = gene_entry[header_map["Associated Gene Name"]]
-        #create a dictionary with the remaining data in order to use it later in drug bank section
-        gene_entries = {gene_entry[header_map["Associated Gene Name"]]:[gene_entry[header_map["Ensembl Gene ID"]],gene_entry[header_map["Gene Start (bp)"]],gene_entry[header_map["Gene End (bp)"]]] for gene_entry in gene_entries}
-    return (gene_entries,gene_protein_map)
-#@profile
-def fill_data_inweb(interaction_file_name, gene_name_file_name):
-    gene_id_map = {}
-    with open(interaction_file_name, "r") as f:
-        with open(gene_name_file_name, "r") as g:
-            for lines in g:
-                lines = lines.strip()
-                line = lines.split("\t")
-                gene_id_map.update({line[0]:line[1]})
-        lines = [line.strip().split("\t") for line in f]
-        interactions = map(lambda x: [gene_id_map[x[0][:-2]],gene_id_map[x[1][:-2]]], lines)
-    return (interactions,gene_id_map)
+import argparse
+import pdb
+import os
 
-#@profile
-def fill_data_string(file_name, interaction_set,gene_protein_map,iteration,allowed_gene_names):
-    alias_source = ""
-    alias_target = ""
-    already_seen_interaction = set({})
-    with open(file_name, "r") as f:
-        #write the json information unless it was already found above
-        throw_away = f.readline()
-        #i don't like string and their redundant interaction list
-        for interaction in [line.split("\t") for line in f]:
-            if interaction[0][5:] in gene_protein_map:
-                alias_source = gene_protein_map[interaction[0][5:]]
-            if interaction[1][5:] in gene_protein_map:
-                alias_target = gene_protein_map[interaction[1][5:]]
-            if  alias_source in allowed_gene_names and alias_target in allowed_gene_names:
-                interaction_string = alias_source+"_"+alias_target
-                reverse_interaction_string = alias_target+"_"+alias_source
-                #there are a lot of duplicates in the string database so filter out to make life easier
-                if interaction_string not in already_seen_interaction and reverse_interaction_string not in already_seen_interaction:
-                    if reverse_interaction_string not in interaction_set:
-                        if interaction_string not in interaction_set:
-                            interaction_set.update({interaction_string:{"source":[]}})
-                            interaction_set[interaction_string]["pk"] = iteration
-                            iteration = iteration + 1
-                        interaction_set[interaction_string]["source"].append("String")
-                        already_seen_interaction.add(interaction_string)
-                    else:
-                        interaction_set[reverse_interaction_string]["source"].append("String")
-                        already_seen_interaction.add(reverse_interaction_string)
-    return interaction_set
-#@profile
-def fill_data_DGIdb(file_name):
-    with open(file_name,"r") as f:
-       throw_away = f.readline()
-       genes = [line.split("\t") for line in f]
-       genes = filter(lambda x: x[3].strip() == "DRUGGABLE GENOME", genes)
-    return set([gene[0] for gene in genes])
+def read_data(filename,sep,header=0,index_col=None):
+    return pd.read_csv(filename,sep=sep,header=header,index_col=index_col)
 
-#@profile
-def fill_data_drug_bank(tree_root, drug_dict,allowed_gene_names,drug_group_order_map):
+def read_drug_bank(tree_root,allowed_gene_names,drug_group_order_map):
+    drug_dict = {"DB_ID":[],"groups":[],"gene":[],"indication":""}
+    html = HTMLParser.HTMLParser()
     gene_data = []
     gene_group_map = {}
     for drug in tqdm.tqdm(tree_root):
@@ -89,15 +35,22 @@ def fill_data_drug_bank(tree_root, drug_dict,allowed_gene_names,drug_group_order
                     sorted(drug_dict["groups"], key=lambda x: drug_group_order_map[x])
             elif "{http://www.drugbank.ca}name" in child.tag:
                 drug_dict["name"] = child.text
+            elif "{http://www.drugbank.ca}indication" in child.tag:
+                if child.text:
+                    indication = child.text
+                    escaped_indication = html.unescape(indication)
+                    escaped_indication = re.sub(r'<i>|</i>','',escaped_indication.strip())
+                    escaped_indication = re.sub(r'(\r|\n)+','',escaped_indication)
+                    if drug_dict["name"] =='Urea':
+                        escaped_indication = re.sub('(<\w+>|</\w+>)+', '',escaped_indication)
+                    drug_dict["indication"] = escaped_indication
             elif "{http://www.drugbank.ca}targets" in child.tag:
                 for sub_child in child:
                     if len(sub_child) > 0:
                         skip = False
                         if "{http://www.drugbank.ca}target" in sub_child.tag:
                             for sub_sub_child in sub_child: #in side target
-                                if "{http://www.drugbank.ca}name" in sub_sub_child.tag:
-                                    name = sub_sub_child.text
-                                elif "{http://www.drugbank.ca}actions" in sub_sub_child.tag:
+                                if "{http://www.drugbank.ca}actions" in sub_sub_child.tag:
                                     if len(list(sub_sub_child)) == 0:
                                         gene_data.append("unknown")
                                     else:
@@ -117,141 +70,222 @@ def fill_data_drug_bank(tree_root, drug_dict,allowed_gene_names,drug_group_order
                         skip = True
         if not(skip):
             yield (drug_dict,gene_group_map)
-        drug_dict = {"DB_ID":[],"groups":[],"gene":[]}
-        gene_dict = {}
+        drug_dict = {"DB_ID":[],"groups":[],"gene":[],"indication":""}
         gene_group_map = {}
-#@profile
-def main(argv=sys.argv):
-    system_options = dict(getopt.getopt(argv[1:], '',['drugbank=', 'inweb=', 'string=', 'dgidb=','output=','masterlist='])[0])
-    drug_group_order_map = {"approved":0, "investigational":1, "experimental":2,"nutraceutical":3,"withdrawn":4,"illicit":5}
+
+def sentence_parser(sentence):
+    tokens = nltk.word_tokenize(sentence)
+    tokens = nltk.pos_tag(tokens)
+    return tokens
+    
+def create_gene_string(drug_bank_gene_table,gene_table):
     output_str = ""
-    total_time = 0
-    drugable_genes = set({})
-    interaction_set = {}
-    if "--dgidb" in system_options:
-        print "Opening the DGIdb file and parsing it....."
-        start = time.time()
-        drugable_genes = fill_data_DGIdb(system_options["--dgidb"])
-        output_str+="{\n\"fields\":{},\n\"model\":\"drug_search.group\",\n\"pk\":\"Drugable\"\n},\n"
-        end = time.time()
-        print "Done Time: %.5fs" % (end-start)
-        total_time += (end-start)
-    if "--masterlist" in system_options:
-        print "Opening the Master Gene file and parsing it....."
-        start = time.time()
-        gene_entries,gene_protein_map = fill_data_master_list(system_options["--masterlist"])
-        allowed_gene_names = set(gene_protein_map.values())
-        end = time.time()
-        print "Done Time: %.5fs" % (end-start)
-        total_time += (end-start)
-    if "--drugbank" in system_options:
-        drug_bank_str = ""
-        group_tracker = set({})
-        #keep track of each drug group to prevent duplicates
-        primary_target_id = 1
-        print "Opening the Drugbank database in element tree...."
-        start = time.time()
-        tree = ET.parse(system_options["--drugbank"])
-        end = time.time()
-        total_time += (end-start)
-        print "Finished... Time: %.5fs" % (end-start)
-        print "Now parsing the data"
-        start = time.time()
-        for drug_dict,gene_group_map in fill_data_drug_bank(tree.getroot(),{"DB_ID":[],"groups":[],"gene":[]},allowed_gene_names,drug_group_order_map):
-            #write out group json
-            for drug_group in drug_dict["groups"]:
-                if drug_group not in group_tracker:
-                    output_str+="{\n\"fields\":{},\n\"model\":\"drug_search.group\",\"pk\":\"%s\"\n},\n" % (drug_group)
-                    group_tracker.add(drug_group)
-            #possible issue is that the first drug seen would the group or that the last drug would be the group
-            for gene in gene_group_map:
-                if len(gene_entries[gene]) < 4:
-                    gene_entries[gene].append(gene_group_map[gene])
-                else:
-                    gene_entries[gene][-1] = gene_entries[gene][-1] if drug_group_order_map[gene_entries[gene][-1]] <= drug_group_order_map[gene_group_map[gene]] else gene_group_map[gene]
-            #write out drug json
-            drug_bank_str+="{\n\"fields\":{\n\"group\":["+",\n".join(["\""+group+"\"" for group in drug_dict["groups"]])+"]\n},\n\"model\":\"drug_search.drug\",\n\"pk\":\"%s\"\n},\n" % (drug_dict["name"])
-            #write out drug_id json
-            for drugid in drug_dict["DB_ID"]:
-                drug_bank_str+="{\n\"fields\":{\n\"name\":\"%s\"\n},\n\"model\":\"drug_search.drugid\",\n\"pk\":\"%s\"\n},\n" % (drug_dict["name"],drugid)
-            #write out targets json
-            for actions, gene in drug_dict["gene"]:
-                for action in actions:
-                    drug_bank_str+="{\n\"fields\":{\n\"action\":\"%s\",\n\"gene\":\"%s\",\n\"drug\":\"%s\"\n},\n\"model\":\"drug_search.targets\",\n\"pk\":%d\n},\n" % (action, gene, drug_dict["name"],primary_target_id)
-                    primary_target_id = primary_target_id + 1
-        #for the rest of the genes that are not in drugbank 
-        for gene in tqdm.tqdm(gene_entries.keys()):
-            if len(gene_entries[gene]) == 4:
-                output_str+="{\n\"fields\":{\n\"category\":[\""+gene_entries[gene][-1]+"\"],\n\"gene_id\":\"%s\"\n},\n\"model\":\"drug_search.gene\",\n\"pk\":\"%s\"\n},\n" % (gene_entries[gene][0],gene)
-            elif gene in drugable_genes:
-                output_str+="{\n\"fields\":{\n\"category\":[\"Drugable\"],\n\"gene_id\":\"%s\"\n},\n\"model\":\"drug_search.gene\",\n\"pk\":\"%s\"\n},\n" % (gene_entries[gene][0],gene)
+    for index,values in drug_bank_gene_table.iterrows():
+        category = ""
+        if values[1] in gene_table.index:
+            category = gene_table.loc[values[1]][0]
+        if category != "":
+            output_str +="{\n\"fields\":{\n\"category\":[\"%s\"],\n\"gene_id\":\"%s\"\n},\n\"model\":\"drug_search.gene\",\n\"pk\":\"%s\"\n},\n" % (category,values[0],values[1])
+        else:
+            output_str +="{\n\"fields\":{\n\"category\":[],\n\"gene_id\":\"%s\"\n},\n\"model\":\"drug_search.gene\",\n\"pk\":\"%s\"\n},\n" % (values[0],values[1])
+    output_str = output_str[:-2] + "\n]"
+    return output_str
+    
+def create_group_string(group_list):
+    output_str = ""
+    for group in group_list:
+        output_str+="{\n\"fields\":{},\n\"model\":\"drug_search.group\",\n\"pk\":\"%s\"\n},\n"%(group)
+    output_str = output_str[:-2] + "\n]"
+    return output_str
+    
+def create_drug_string(drug_id_table,drug_group_table):
+    output_str = ""
+    for (name,drug_group) in drug_group_table.groupby("Name"):
+        output_str +="{\n\"fields\":{\n\"group\":[%s]\n},\n\"model\":\"drug_search.drug\",\n\"pk\":\"%s\"\n},\n" % (",".join("\"%s\""% (group) for group in drug_group["Group"]),name)
+    for (name,drug_id_group) in drug_id_table.groupby("Name"):
+        for drug_id in drug_id_group["Drug Bank Id"]:
+            output_str +="{\n\"fields\":{\n\"name\":\"%s\"\n},\n\"model\":\"drug_search.drugid\",\n\"pk\":\"%s\"\n},\n" % (name,drug_id)
+    output_str = output_str[:-2] + "\n]"    
+    return output_str
+
+def create_drug_target_string(drug_gene_table):
+    output_str = ""
+    index = 1
+    for (name,drug_target_group) in drug_gene_table.groupby("Name"):
+        for gene, gene_action in zip(drug_target_group["Gene Name"],drug_target_group["Gene Action"]):
+            output_str+="{\n\"fields\":{\n\"action\":\"%s\",\n\"gene\":\"%s\",\n\"drug\":\"%s\"\n},\n\"model\":\"drug_search.targets\",\n\"pk\":%d\n},\n"%(gene_action,gene,name,index)
+            index = index + 1
+    output_str = output_str[:-2] + "\n]"
+    return output_str
+    
+def create_interaction_string(sources,string_interaction_list,inweb_interaction_list):
+    output_str = ""
+    pk = 0
+    for source in sources:
+        output_str+="{\n\"fields\":{},\n\"model\":\"drug_search.interactionsource\",\n\"pk\":\"%s\"\n},\n" % (source)
+    for interaction in string_interaction_list:
+        if interaction[0] != interaction[1]:
+            output_str += "{\n\"fields\":{\n\"source\":[\"String\"],\n\"gene_source\":\"%s\",\n\"gene_target\":\"%s\"\n},\n\"model\":\"drug_search.interactions\",\n\"pk\":%d\n},\n" % (interaction[0],interaction[1],pk)
+            pk = pk + 1
+    for interaction in inweb_interaction_list:
+        if interaction[0] != interaction[1]:
+            output_str += "{\n\"fields\":{\n\"source\":[\"Dapple\"],\n\"gene_source\":\"%s\",\n\"gene_target\":\"%s\"\n},\n\"model\":\"drug_search.interactions\",\n\"pk\":%d\n},\n" % (interaction[0],interaction[1],pk)
+            pk = pk + 1
+    output_str = output_str[:-2] + "\n]" 
+    return output_str
+    
+def create_wordcloud_string(category_map):
+    output_str = ""
+    for category in category_map:
+        output_str+="{\n\"fields\":{\n\"drug\":[%s],\n\"count\":%d\n},\n\"model\":\"drug_search.word\",\n\"pk\":\"%s\"\n},\n" % (",".join(["\"%s\"" % (drug) for drug in category_map[category]]),len(category_map[category]),category)
+    output_str = output_str[:-2] + "\n]" 
+    return output_str
+
+def create_gene_score_source_string(phenotype_dict):
+    output_str = ""
+    skip = False
+    for phenotype_source in phenotype_dict:
+        output_str+="{\n\"fields\":{},\n\"model\":\"drug_search.genescoresource\",\n\"pk\":\"%s\"\n},\n" % (phenotype_source)
+        if not skip:
+            for phenotype in phenotype_dict[phenotype_source]:
+                output_str+="{\n\"fields\":{},\n\"model\":\"drug_search.phenotype\",\n\"pk\":\"%s\"\n},\n" % (phenotype)
+            skip = True
+    output_str = output_str[:-2] + "\n]"
+    return output_str
+
+def create_phenotype_string(phenotype_dict):
+    output_str = ""
+    pk = 0
+    allowed_genes = pd.read_csv("Allowed Genes.csv",names=["Gene"])
+    for phenotype_source in phenotype_dict:
+           for phenotype in phenotype_dict[phenotype_source]:
+                for index,row in tqdm.tqdm(phenotype_dict[phenotype_source][phenotype].iterrows()):
+                    if row['Gene'] in list(allowed_genes['Gene']):
+                        output_str+="{\n\"fields\":{\n\"source\":\"%s\",\n\"gene\":\"%s\",\n\"phenotype\":\"%s\",\n\"p_val\":%f,\n\"log_score\":%f},\n\"model\":\"drug_search.phenotypemap\",\n\"pk\":%d\n},\n" % (phenotype_source,row['Gene'],phenotype,row['Pvalue'],row['log_score'],pk)
+                        pk = pk + 1
+    output_str = output_str[:-2] + "\n]"
+    return output_str
+
+drug_group_order_map = {"approved":0, "investigational":1, "experimental":2,"nutraceutical":3,"withdrawn":4,"illicit":5}
+parser = argparse.ArgumentParser(prog="Database Generator",description="This program generates the data for the django database.")
+parser.add_argument("-s","--string",help="This argument is used to read in the protein-protein interactions from string database. Args:<File Name>",nargs=1) 
+parser.add_argument("-i","--inweb",help="This argument is used to read in protein-protein interactions from the inweb database. Args:<Interaction File Name><Protein id File Name>",nargs=2)
+parser.add_argument("-d","--drugbank",help="This argument is used to read in the drug data from drugbank.ca. Args:<File Name>",nargs=1)
+parser.add_argument("-e","--ensembl",help="This argument is used to read in the gene information from ensembl.Args<Master Gene File><Sequence File>",nargs="+")
+parser.add_argument("-o","--output",help="This argument is used to print out the data in json format. Args:<output folder>",nargs=1)
+parser.add_argument("-w","--wordcloud",help="This argument is used to input a list of word cloud categories. Args: <Input file>",nargs=1)
+parser.add_argument("-p","--phenotype",help="This argument is used to input a list of gene - phenotype associations. Args: <Input file>",nargs='+')
+args = parser.parse_args()
+allowed_gene_names = []
+
+if args.ensembl:
+    print "Reading From Ensembl"
+    ensembl_genes = read_data(args.ensembl[0],sep="\t")
+    if len(args.ensembl) > 1:
+        ensembl_seq = read_data(args.ensembl[1],sep="\t")
+    allowed_gene_names = ensembl_genes["Associated Gene Name"].unique()
+
+if args.drugbank:
+    print "Reading From DrugBank"
+    drug_id_table = pd.DataFrame([],columns=["Drug Bank Id","Name"])
+    drug_group_table = pd.DataFrame([],columns=["Name","Group"])
+    drug_gene_table = pd.DataFrame([],columns=["Name","Gene Name","Gene Action"]) 
+    drug_indication_table = pd.DataFrame([],columns=["Name","Indication"])
+    gene_table = pd.DataFrame([],columns=["Gene Name","Gene Group"])
+    for drug,gene in read_drug_bank(ET.parse(args.drugbank[0]).getroot(),allowed_gene_names,drug_group_order_map):
+        for gene_name in gene:
+            if gene_name not in gene_table["Gene Name"].unique():
+                gene_table = gene_table.append(pd.DataFrame([[gene_name,gene[gene_name]]],columns=gene_table.columns),ignore_index=True)
+            elif drug_group_order_map[gene_table[gene_table["Gene Name"] == gene_name]["Gene Group"].values[0]] > drug_group_order_map[gene[gene_name]]:
+                gene_table.loc[gene_table[gene_table["Gene Name"] == gene_name].index[0],"Gene Group"] = gene[gene_name]
             else:
-                output_str+="{\n\"fields\":{\n\"category\":[],\n\"gene_id\":\"%s\"\n},\n\"model\":\"drug_search.gene\",\n\"pk\":\"%s\"\n},\n" % (gene_entries[gene][0],gene)
-        #because of databases need to add genes first then add the drugs
-        output_str = output_str + drug_bank_str
-        end = time.time()
-        print "Done Time: %.5fs" % (end-start)
-        total_time += (end-start)
-    if "--inweb" in system_options:
-        output_str+="{\n\"fields\":{},\n\"model\":\"drug_search.source\",\n\"pk\":\"Dapple\"\n},\n"
-        iteration = 1
-        gene_id_map = {}
-        files = system_options["--inweb"].split(",")
-        print "Opening the Dapple Files and parsing them....."
-        start = time.time()
-        interactions,gene_id_map = fill_data_inweb(files[0], files[1])
-        for interaction in interactions:
-            #only include interaction if both genes are in drug_bank
-            if interaction[0] in allowed_gene_names and interaction[1] in allowed_gene_names:
-                interaction_string = interaction[0]+"_"+interaction[1]
-                if interaction_string not in interaction_set:
-                    interaction_set.update({interaction_string:{"source":[]}})
-                interaction_set[interaction_string]["source"].append("Dapple")
-                interaction_set[interaction_string]["pk"]= iteration
-                iteration = iteration + 1
-        end = time.time()
-        print "Done Time: %.5f" % (end-start)
-        total_time+= (end-start)
-    if "--string" in system_options:
-        if len(interaction_set) == 0:
-            iteration = 1
-        output_str+="{\n\"fields\":{},\n\"model\":\"drug_search.source\",\n\"pk\":\"String\"\n},\n"
-        print "Opening the String database files and parsing them...."
-        start = time.time()
-        interaction_set = fill_data_string(system_options["--string"], interaction_set, gene_protein_map, iteration,allowed_gene_names)
-        end = time.time()
-        print "Done Time: %.5fs" % (end-start)
-        total_time+= (end-start)
-    #since interactions can have multiple sources I have to put this block here
-    #this takes about 3 hours holy mother of magical words I need to cut some interactions out 
-    if "--string" in system_options or "--inweb" in system_options:
-        interaction_str = ""
-        print "Parsing the Gene interaction list....."
-        start = time.time()
-        for interaction_key in tqdm.tqdm(interaction_set):
-            gene_source, gene_target = interaction_key.split("_")
-            interaction_str+="{\n\"fields\":\n{\n\"source\":[" + ",".join(["\""+ source_str + "\"" for source_str in interaction_set[interaction_key]["source"]]) + "],\n\"gene_source\":\"%s\",\n\"gene_target\":\"%s\"\n},\n\"model\":\"drug_search.interactions\",\n\"pk\":%d\n},\n" % (gene_source, gene_target,interaction_set[interaction_key]["pk"])
-        output_str = output_str + interaction_str
-        end = time.time()
-        print "Done Time: %.5fs" % (end-start)
-        total_time+=(end-start)
-    if "--output" in system_options:
-        file_obj = codecs.open(system_options["--output"], "w",encoding="utf8")
-    else:
-        file_obj = codecs.open("reporpoise_data.json", "w",encoding="utf8")
-    print "Writting Everything to file...."
-    start = time.time()
-    #begin the json option with a square open bracket
-    file_obj.write("[\n")
-    output_str = output_str[:-2]+"\n"
-    file_obj.write(output_str)
-    #end the json object with a closing square bracket
-    file_obj.write("]")
-    file_obj.close()
-    end = time.time()
-    total_time += (end-start)
-    print "Done Time: %.5fs" % (end-start)
-    print "Total Time Taken: %.5fs" % (total_time)
-    return 0
-if __name__ == "__main__":
-    sys.exit(main())
+                pass
+        for drug_id in drug["DB_ID"]:
+           drug_id_table = drug_id_table.append(pd.DataFrame([[drug_id,drug["name"]]],columns=list(drug_id_table.columns)),ignore_index=True)
+        for group in drug["groups"]:
+            drug_group_table = drug_group_table.append(pd.DataFrame([[drug["name"],group]],columns=list(drug_group_table.columns)),ignore_index=True)
+        for gene in drug["gene"]:
+            for gene_action in gene[0]:
+                drug_gene_table = drug_gene_table.append(pd.DataFrame([[drug["name"],gene[1],gene_action]],columns=list(drug_gene_table.columns)),ignore_index=True)
+        if drug["indication"] != "":
+            drug_indication_table = drug_indication_table.append(pd.DataFrame([[drug["name"],drug["indication"]]],columns=list(drug_indication_table.columns)),ignore_index=True)
+
+if args.string:
+    print "Reading From String"
+    string_interactions = read_data(args.string[0],sep="\t")
+    ensembl_gene_map = ensembl_genes[["Ensembl Protein ID","Associated Gene Name"]].drop_duplicates().set_index("Ensembl Protein ID").to_dict()["Associated Gene Name"]
+    string_interactions_list = [[ensembl_gene_map[interaction[0][5:]],ensembl_gene_map[interaction[1][5:]]] for interaction in string_interactions[["item_id_a","item_id_b"]].values.tolist() if interaction[0][5:] in ensembl_gene_map and interaction[1][5:] in ensembl_gene_map]
+
+if args.inweb:
+    print "Reading From Inweb"
+    interactions = read_data(args.inweb[0],sep="\t",header=None)
+    gene_ids = read_data(args.inweb[1],sep="\t",header=None)
+    gene_ids = pd.merge(gene_ids,pd.DataFrame(allowed_gene_names,columns=["Gene"]),left_index=True,left_on=1,right_on="Gene").set_index(0).to_dict()[1]
+    inweb_interaction_list = [[gene_ids[int(interaction[0][:-2])],gene_ids[int(interaction[1][:-2])]] for interaction in interactions.values.tolist() if int(interaction[0][:-2]) in gene_ids and int(interaction[1][:-2]) in gene_ids]
+
+if args.wordcloud:
+    print "Reading From WordCloud"
+    categories = {}
+    with codecs.open(args.wordcloud[0],"r",encoding="utf8") as f:
+        categories = {line.strip():{} for line in f}
+    for (index,value) in tqdm.tqdm(drug_indication_table.iterrows()):
+        indication = value["Indication"]
+        name = value["Name"]
+        re.sub(r'[\(\)\[\]]+','', indication)
+        sentence_tokens = sentence_parser(indication)
+        grammar = "NP: {<JJ>*<CD>*(<NN>|<NNS>|<NNP>|<VBZ>|<JJ>)+}<,>*"
+        cp = nltk.RegexpParser(grammar)
+        tree = cp.parse(sentence_tokens)
+        for subtree in tree.subtrees():
+            if subtree.label() == "NP":
+                keywords = ' '.join(map(lambda leaf: leaf[0], subtree))
+                for cat_keys in set(categories.keys()):
+                    if cat_keys.lower() in keywords.lower():
+                        categories[cat_keys].update({name:keywords})
+
+if args.phenotype:
+    print "Reading From Phenotype"
+    total_phenotype_dict = {}
+    for phenotype_file in args.phenotype:
+        pheno_file = read_data(phenotype_file,",")
+        file_name = os.path.splitext(os.path.basename(phenotype_file))[0].split("_")
+        gene_score_source = file_name[0]
+        phenotype = re.sub("[\d]+$","",file_name[1])
+        if gene_score_source not in total_phenotype_dict:
+            total_phenotype_dict[gene_score_source] = {}
+        if phenotype not in total_phenotype_dict[gene_score_source]:
+            total_phenotype_dict[gene_score_source][phenotype] = pheno_file[[col for col in pheno_file if col in ["Gene","Pvalue","log_score"]]]
+
+if args.output:
+    print "Outputing Files"
+    #write group json
+    with codecs.open(args.output[0]+"/reporpoise_group.json","w",encoding="utf8") as f:
+        f.write("[\n")
+        f.write(create_group_string(drug_group_table["Group"].unique()))
+    #write gene json
+    with codecs.open(args.output[0]+"/reporpoise_gene.json","w",encoding="utf8") as f:
+        f.write("[\n")
+        f.write(create_gene_string(ensembl_genes[["Ensembl Gene ID","Associated Gene Name"]].drop_duplicates(),gene_table.set_index("Gene Name")))
+    #write drug table
+    with codecs.open(args.output[0]+"/reporpoise_drug.json","w",encoding="utf8") as f:
+        f.write("[\n")
+        f.write(create_drug_string(drug_id_table,drug_group_table))
+    #write drug target table
+    with codecs.open(args.output[0]+"/reporpoise_drug_target.json","w",encoding="utf8") as f:
+        f.write("[\n")
+        f.write(create_drug_target_string(drug_gene_table))
+    #write interacion table
+    with codecs.open(args.output[0]+"/reporpoise_protein_interaction.json","w",encoding="utf8") as f:
+        f.write("[\n")
+        f.write(create_interaction_string(["String","Dapple"],string_interactions_list,inweb_interaction_list))
+    #write word cloud
+    with codecs.open(args.output[0]+"/reporpoise_word_cloud.json","w",encoding="utf8") as f:
+        f.write("[\n")
+        f.write(create_wordcloud_string(categories))
+    #write phenotype values
+    with codecs.open(args.output[0]+"/reporpoise_phenotype_source.json","w",encoding="utf8") as f:
+        f.write("[\n")
+        f.write(create_gene_score_source_string(total_phenotype_dict))
+    with codecs.open(args.output[0]+"/reporpoise_phenotype.json","w",encoding="utf8") as f:
+        f.write("[\n")
+        f.write(create_phenotype_string(total_phenotype_dict))

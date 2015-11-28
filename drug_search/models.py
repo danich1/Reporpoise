@@ -1,7 +1,13 @@
 from django.db import models
 
 #This is the source table which holds the values Dapple or String database. It keeps reference where the interactions came from
-class Source(models.Model):
+class InteractionSource(models.Model):
+    source = models.CharField(max_length=100, primary_key=True, default='unknown')
+
+    def __str__(self):
+        return self.source
+#This is the source for gene scores
+class GeneScoreSource(models.Model):
     source = models.CharField(max_length=100, primary_key=True, default='unknown')
 
     def __str__(self):
@@ -27,7 +33,7 @@ class Gene(models.Model):
 class Interactions(models.Model):
     gene_source = models.ForeignKey(Gene)
     gene_target = models.ForeignKey(Gene,related_name='gene_targets')
-    source = models.ManyToManyField(Source)
+    source = models.ManyToManyField(InteractionSource)
 
 #This is the Drug model that represents a given Drug
 class Drug(models.Model):
@@ -72,6 +78,8 @@ class Phenotype(models.Model):
 class PhenotypeMap(models.Model):
     gene = models.ForeignKey(Gene)
     phenotype = models.ForeignKey(Phenotype)
-    z_score = models.FloatField()
+    p_val = models.FloatField()
+    log_score = models.FloatField()
+    source = models.ForeignKey(GeneScoreSource)
     def __str__(self):
         return "Gene:%s, Phenotype:%s, Z-score:%.2f" % (str(self.gene), str(self.phenotype), z_score)
