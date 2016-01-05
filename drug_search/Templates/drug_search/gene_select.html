@@ -31,15 +31,28 @@
         </div>
         <div class="form-group">
             <label class="control-label col-sm-1 col-md-1 col-lg-1">
-                Source
+                Interaction Source
                 <a href="#" style="color:black;" data-toggle="popover" title="Help Tool" data-content="Select the source for protein-protein interactions!! We have {{Dapple|add:String}} interactions in our database!!" data-html="true">
                     <span class="glyphicon glyphicon-question-sign">
                     </span>
                 </a>
             </label>
             <div class="col-sm-11 col-md-11 col-lg-11"> 
-                <input type="checkbox" name="source" value="Dapple" class="sourcecheck"> Dapple (Interactions: {{Dapple}})<br>
-                <input type="checkbox" name="source" value="String" class="sourcecheck"> String (Interactions: {{String}})<br>
+                <input type="radio" name="source" value="Dapple" class="sourcecheck"> Dapple (Interactions: {{Dapple}})<br>
+                <input type="radio" name="source" value="String" class="sourcecheck"> String (Interactions: {{String}})<br>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="control-label col-sm-1 col-md-1 col-lg-1">
+                Association Source
+                <a href="#" style="color:black;" data-toggle="popover" title="Help Tool" data-content="Select the source tool for gene-phenotype association scores!!" data-html="true">
+                    <span class="glyphicon glyphicon-question-sign">
+                    </span>
+                </a>
+            </label>
+            <div class="col-sm-11 col-md-11 col-lg-11"> 
+                <input type="radio" name="gene_source" value="Vegas" class="sourcecheck"> Vegas <br>
+                <input type="radio" name="gene_source" value="Magma" class="sourcecheck"> Magma <br>
             </div>
         </div>
         <button id="submit" class="btn btn-primary">

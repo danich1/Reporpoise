@@ -12,6 +12,7 @@ class GeneScoreSource(models.Model):
 
     def __str__(self):
         return self.source
+
 #This is the Drug Group Model that represents which drug group a given Drug belongs
 class Group(models.Model):
     name = models.CharField(max_length=100, primary_key=True)
@@ -19,12 +20,33 @@ class Group(models.Model):
     def __str__(self):
         return self.name
 
+#class SNP(models.Model):
+#    chrom = models.CharField(max_length=2)
+#    rs_id = models.CharField(max_length=200,primary_key=True,default='unknown')
+#    r_sq = models.ManyToManyField('self',through='R_Squared',symmetrical=False)
+#    position = models.IntegerField()
+
+#    def __str__(self):
+#        return "%s" % (self.rs_id)
+
+#class R_Squared(models.Model):
+#    snp_A = model.ForeignKey(SNP)
+#    snp_B = model.ForeignKey(SNP,related_name='snp_B')
+#    val = models.FloatField()
+
+#    def __str__(self):
+#        return "%s,%s: %f" % (self.snp_A,self.snp_B,val)
+
 # This is the gene model that represents a given Gene
 class Gene(models.Model):
     gene_name = models.CharField(max_length=100,primary_key=True, default='unknown')
     gene_id = models.CharField(max_length=100, default='unknown')
     interact = models.ManyToManyField('self', through='Interactions',symmetrical=False)
     category = models.ManyToManyField(Group)
+    #start = models.IntegerField()
+    #end = models.IntegerField()
+    #strand = models.BooleanField(default=True)
+    #chrom = models.CharField(max_length=2)
 
     def __str__(self):
         return self.gene_name
@@ -67,12 +89,12 @@ class Word(models.Model):
     def __str__(self):
         return "Label:%s, Count:%d" % (str(self.label), int(self.count))
 
-#This is the Phenotype model that represents a phenotype that a drug is associated with
+#This is the Phenotype model that represents a phenotype that a gene is associated with
 class Phenotype(models.Model):
     gene = models.ManyToManyField(Gene,through='PhenotypeMap')
     name = models.CharField(max_length=400, primary_key=True)
     def __str__(self):
-        return "Type:%s" % (str(name))
+        return "%s" % (str(self.name))
 
 #This is the Phenotype Map model where it maps a gene to a phenotype and provides a given Z-score 
 class PhenotypeMap(models.Model):
@@ -82,4 +104,4 @@ class PhenotypeMap(models.Model):
     log_score = models.FloatField()
     source = models.ForeignKey(GeneScoreSource)
     def __str__(self):
-        return "Gene:%s, Phenotype:%s, Z-score:%.2f" % (str(self.gene), str(self.phenotype), z_score)
+        return "Gene:%s, Phenotype:%s, Log score:%.2f Source:%s" % (str(self.gene), str(self.phenotype), self.log_score,str(self.source))

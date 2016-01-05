@@ -3,7 +3,7 @@ This function loads the graph data.
 params: data which is the gene_name of a given gene (ex MAPK1)
 returns: calls the draw_network function to use d3 to graph the gene network
 */
-function load_graph(data,phenotypes,mode,connection,source)
+function load_graph(data,phenotypes,mode,connection,source,gene_source)
 {
     // fix the data for a json object
     data = data.replace(/&quot;/g,'\'');
@@ -40,17 +40,20 @@ function load_graph(data,phenotypes,mode,connection,source)
         // make sure to change when necessary
         $scope.update_graph = function(category)
         {
+            var categories = {"CHD":0,"T2D":1};
+            var normalize = {"Vegas":{"CHD":7.0,"T2D":7.0},"Magma":{"CHD":13.694821,"T2D":10.256733}};
             var found_category = false;
-            var colors = d3.scale.category10().range();
-            var group = document.getElementsByClassName("gene");
+            var colors = ["Red","Blue"];
+            var group = document.getElementById("graph_nodes").children;
             group = [].slice.call(group);
-            group = group.filter(function(n){return n.nodeName=="circle"});
+            group = group.filter(function(n){return n.className.animVal.contains("outer")});
+            console.log($scope);
             for(var group_index in group)
             {
                 //go back go default
-                if(category=="default")
+                if(category=="Default")
                 {
-                    group[group_index].style="fill:SaddleBrown;opacity:1;"
+                    group[group_index].style="fill:white;opacity:1;";
                 }
                 else
                 {
@@ -61,7 +64,9 @@ function load_graph(data,phenotypes,mode,connection,source)
                             if($scope.phenotype_list[group[group_index].textContent][pheno_category][0] == category)
                             {
                                 found_category = true;
-                                group[group_index].style="fill:"+colors[0]+";opacity:"+GetZPercent($scope.phenotype_list[group[group_index].textContent][pheno_category][1])+";";
+                                association_score = $scope.phenotype_list[group[group_index].textContent][pheno_category][1]
+                                normalize_constant = normalize[$scope.phenotype_source][category];
+                                group[group_index].style="fill:"+colors[categories[category]]+";opacity:"+Math.max((association_score/normalize_constant),0.05)+";";
                             }
                         }
                         if(!found_category)
@@ -97,9 +102,14 @@ function load_graph(data,phenotypes,mode,connection,source)
             hiddenField3.setAttribute("type","hidden");
             hiddenField3.setAttribute("name", "source");
             hiddenField3.setAttribute("value", source.split(","));
+            var hiddenField4 = document.createElement("input");
+            hiddenField4.setAttribute("type","hidden");
+            hiddenField4.setAttribute("name","gene_source");
+            hiddenField4.setAttribute("value",gene_source);
             form.appendChild(hiddenField);
             form.appendChild(hiddenField2);
             form.appendChild(hiddenField3);
+            form.appendChild(hiddenField4);
             document.body.appendChild(form);
             form.submit();
         };
@@ -124,14 +134,16 @@ function load_graph(data,phenotypes,mode,connection,source)
                     params:
                     {
                         "flag":"fill",
-                        "genes":$scope.graph['genes']
+                        "genes":$scope.graph['genes'],
+                        "gene_source":gene_source,
                     }
                 })
                 .success(function(response)
                 {
-                    //console.log(response);
+                    console.log(response);
                     //merge the pheno type data
                     $scope.phenotype_list=merge($scope.phenotype_list, response["phenotypes"]["pheno_data"]);
+                    $scope.phenotype_source = response["phenotypes"]["gene_source"];
                     //$scope.phenotype_categories= response["phenotypes"]["pheno_list"];
                     $scope.phenotype_categories=["CHD","T2D"];
                     $scope.drug_data=response["drugs"];
@@ -203,9 +215,9 @@ function getCookie(name) {
 function merge(phenolist1,phenolist2)
 {
     var keys1 = Object.keys(phenolist1);
-    //console.log(keys1);
+    console.log(keys1);
     var keys2 = Object.keys(phenolist2);
-    //console.log(keys2);
+    console.log(keys2);
     var intersection = keys2.filter(function(n){return keys1.indexOf(n) == -1;});
     if(intersection.length > 0)
     {
@@ -214,36 +226,7 @@ function merge(phenolist1,phenolist2)
             phenolist1[intersection[index]] = phenolist2[intersection[index]];
         }
     }
-    return phenolist1;
+    console.log(phenolist1);
+    console.log(phenolist2);
+    return phenolist2;
 }
-//using the taylor series expansion of the normal cdf
-//yay internets
-function GetZPercent(z) 
-  {
-    //z == number of standard deviations from the mean
-
-    //if z is greater than 6.5 standard deviations from the mean
-    //the number of significant digits will be outside of a reasonable 
-    //range
-    if ( z < -6.5)
-      return 0.0;
-    if( z > 6.5) 
-      return 1.0;
-
-    var factK = 1;
-    var sum = 0;
-    var term = 1;
-    var k = 0;
-    var loopStop = Math.exp(-23);
-    while(Math.abs(term) > loopStop) 
-    {
-      term = .3989422804 * Math.pow(-1,k) * Math.pow(z,k) / (2 * k + 1) / Math.pow(2,k) * Math.pow(z,k+1) / factK;
-      sum += term;
-      k++;
-      factK *= k;
-
-    }
-    sum += 0.5;
-
-    return sum;
-  }

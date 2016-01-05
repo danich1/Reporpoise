@@ -22,23 +22,10 @@
             </div>
         </div>
     </div>
-    <div id="base_model" ng-show="finished">
-        <div id="gene_network">
+    <div id="base_model" class="row" ng-show="finished">
+        <div id="gene_network" class="col-md-9">
         </div>
-        <div id="Feature Modes">
-            <div class="dropup">
-                    <button class="btn btn-default btn-info dropdown-toggle" type="button" data-toggle="dropdown">
-                        Phenotypes
-                        <span class="caret">
-                        </span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li><a href="#">Default</a></li>
-                        <li><a href="#">HTML</a></li>
-                        <li><a href="#">CSS</a></li>
-                        <li><a href="#">JavaScript</a></li>
-                    </ul>
-                </div>
+        <div id="Feature Modes" class="col-md-3">
                 <div>
                     <button ng-click="setmode('highlight')" class="btn btn-default btn-info dropdown-toggle" type="button">
                         Highlight
@@ -55,10 +42,22 @@
                 </div>
                 <div>
                 <a href="test" class="btn btn-default btn-info dropdown-toggle" type="button">
-                        Browse Chromosome
+                        Browse Gene
                         <span class="glyphicon glyphicon-search">
                         </span>
                 </a>
+            </div>
+            <div>
+                    <button class="btn btn-default btn-info dropdown-toggle" type="button" data-toggle="dropdown">
+                        Phenotypes
+                        <span class="caret">
+                        </span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a ng-click="update_graph('CHD')">CHD</a></li>
+                        <li><a ng-click="update_graph('T2D')">T2D</a></li>
+                        <li><a ng-click="update_graph('Default')">Default</a></li>
+                    </ul>
             </div>
         </div>
         <div class="modal fade" role="dialog" drug-modal="switch_case">
@@ -95,7 +94,7 @@
                                             <thead>
                                                 <tr>
                                                     <th> Phenotype </th>
-                                                    <th> Z-Score </th>
+                                                    <th> Log Score </th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -120,6 +119,6 @@
 </div>
 {%endverbatim%}
 <script>
-load_graph('{{gene_network}}','{{phenotypes}}','{{mode}}','{{connection}}','{{source}}');
+load_graph('{{gene_network}}','{{phenotypes}}','{{mode}}','{{connection}}','{{source}}','{{gene_source}}');
 </script>
 {% endblock %}

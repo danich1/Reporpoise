@@ -47,6 +47,8 @@ function highlightNodes(outer_circle,inner_circle,text,links,node,linkedByIndex,
        links.classed("nohighlight", false);
     }
 }
+var svg;
+//var zoom;
 function draw_network(data,height,width,scope,categories,user_height,legend_offset,distances,layers)
 {
     var index = -1;
@@ -73,11 +75,16 @@ function draw_network(data,height,width,scope,categories,user_height,legend_offs
         linkedByIndex[d.source.index + "," + d.target.index] = true;
     });
 
+    //zoom = d3.behavior.zoom()
+    //.scaleExtent([1,4])
+    //.on("zoom",zoomed);
+
     //create an svg object by selecting the tag that has the gene_network id 
-    var svg = d3.select("#gene_network")
+    svg = d3.select("#gene_network")
     .append("svg")
     .attr("width",width)
-    .attr("height",height)
+    .attr("height",height);
+    //.call(zoom);
 
     //create a legend for the gene network
     var legend = svg.append("g")
@@ -198,4 +205,10 @@ function draw_network(data,height,width,scope,categories,user_height,legend_offs
         circle2.attr("transform", transform);
         text.attr("transform", transform);
     });
+}
+function zoomed()
+{
+    console.log(svg,d3.event.translate,d3.event.scale);
+    console.log(zoom.scale());
+    svg.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")")
 }

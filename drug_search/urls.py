@@ -10,7 +10,8 @@ urlpatterns = [
     url(r'^network$',views.network, name="network"),
     url(r'^networktize$',views.networktize, name="networktize"),
     url(r'^reference$', views.reference, name="references"),
-    url(r'^test$', views.test,name="test")
+    url(r'^test$', views.test,name="test"),
+    url(r'^show_slides$',views.show_slides,name="show_slides")
 ]
 #This last part is important so django can find static files in the static folder
 urlpatterns += staticfiles_urlpatterns()

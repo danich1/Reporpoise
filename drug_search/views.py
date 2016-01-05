@@ -5,6 +5,9 @@ from collections import defaultdict
 from .models import *
 import re, math, json,pickle,ast
 
+def show_slides(request):
+    return render(request, 'drug_search/slides.html')
+
 def test(request):
     return render(request, 'drug_search/test.html')
 
@@ -28,7 +31,8 @@ def network(request):
         mode = request.POST.get("mode","")
         source = request.POST.get("source", "")
         connection = request.POST.get("connection", "")
-    return render(request,'drug_search/network.html',{"gene_network":json.dumps({gene_name:""}),"phenotypes":phenotypes,"mode":mode,"connection":connection,"source":source})
+        gene_source = request.POST.get("gene_source","")
+    return render(request,'drug_search/network.html',{"gene_network":json.dumps({gene_name:""}),"phenotypes":phenotypes,"mode":mode,"connection":connection,"source":source,"gene_source":gene_source})
 
 # This method will parse the file or a gene list in order to render the gene wagon page correctly
 def search(request):
@@ -54,7 +58,7 @@ def search(request):
                     for index in range(len(gene_obj)-1):
                         gene_dict[gene_name].append((gene_obj[index],float(gene_obj[index+1])))
         translate = int(round(105/math.tan(math.pi/len(gene_dict)))) if len(gene_dict) > 2 else 180 if len(gene_dict) == 2 else 0
-        return render(request, 'drug_search/report.html', {"genes":json.dumps(gene_dict),"translate":translate,"source":",".join(request.POST.getlist("source"))})
+        return render(request, 'drug_search/report.html', {"genes":json.dumps(gene_dict),"translate":translate,"source":",".join(request.POST.getlist("source")),"gene_source":",".join(request.POST.getlist("gene_source"))})
     raise Http404("Invalid Request Please Try Again!")
 
 #This method returns drug json data based on a given gene list
@@ -65,15 +69,19 @@ def grab_data(request):
         gene_list = gene_dict.keys()
         #grab the phenotype data from the database if flag is true 
         if(request.GET['flag']=="fill"):
+            gene_source = request.GET['gene_source']
             temp_gene_dict = {}
-            pheno_list = set([])
-            gene_dict = {gene_id: Phenotype.objects.filter(phenotypemap__gene__gene_name__iexact=gene_id) for gene_id in gene_list}
+            pheno_list = []
+            #print gene_list
+            gene_dict = {gene_id: PhenotypeMap.objects.filter(gene__gene_name__iexact=gene_id) for gene_id in gene_list}
+            #print gene_dict
             for gene_id in gene_dict:
                 temp_gene_dict.update({gene_id:[]})
                 for gene_pheno in gene_dict[gene_id]:
-                    pheno_list.append(gene_pheno.phenotype.name)
-                    temp_gene_dict[gene_id].append((gene_pheno.phenotype.name,gene_pheno.z_score))
-            gene_dict={"pheno_data":temp_gene_dict,"pheno_list":list(pheno_list)}
+                    if gene_source == gene_pheno.source.source:
+                        pheno_list.append(gene_pheno.phenotype.name)
+                        temp_gene_dict[gene_id].append((gene_pheno.phenotype.name,gene_pheno.log_score))
+            gene_dict={"pheno_data":temp_gene_dict,"pheno_list":list(pheno_list),"gene_source":gene_source}
         drugs = {}
         target = {}
         categories = {}

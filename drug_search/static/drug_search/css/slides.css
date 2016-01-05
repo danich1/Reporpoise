@@ -1,0 +1,12 @@
+/*This targets the title id in all the html files*/
+#title
+{
+    color:red;
+    /*font-style: oblique;
+    font-family: "Times New Roman", Times, serif;
+    text-shadow:
+    -1px -1px 0 white,
+    1px -1px 0 white,
+    -1px 1px 0 white,
+    1px 1px 0 white;*/
+}

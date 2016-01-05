@@ -21,8 +21,10 @@ function rotate(event)
 /*this function loads all the information necessary from the django webserver
 params: gene_list a comma seperated list of gene names
 */
-function load(gene_list,source)
+function load(gene_list,source,gene_source)
 {
+    console.log(gene_source);
+    console.log(source);
     if(source.indexOf("String") != -1)
     {
         var link = document.getElementById("network_indirect");
@@ -125,9 +127,14 @@ function load(gene_list,source)
                 hiddenField3.setAttribute("type", "hidden");
                 hiddenField3.setAttribute("name", "connection");
                 hiddenField3.setAttribute("value", connection);
+                var hiddenField4 = document.createElement("input");
+                hiddenField4.setAttribute("type","hidden");
+                hiddenField4.setAttribute("name","gene_source");
+                hiddenField4.setAttribute("value",gene_source);
                 form.appendChild(hiddenField);
                 form.appendChild(hiddenField2);
                 form.appendChild(hiddenField3);
+                form.appendChild(hiddenField4);
                 form.submit();
             }
         };

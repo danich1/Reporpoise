@@ -157,7 +157,7 @@
             </section>
             {% endverbatim %}
             <script>
-            load('{{genes}}','{{source}}');
+            load('{{genes}}','{{source}}','{{gene_source}}');
             </script>
             <style ng-repeat="gene in data_keys"> 
             #carousel figure:nth-child({% verbatim %}{{$index+1}}{% endverbatim %}){transform: rotateY({% verbatim %}{{360/data_keys.length*$index}}{% endverbatim %}deg)translateZ({{translate}}px);}
